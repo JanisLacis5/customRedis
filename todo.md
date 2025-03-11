@@ -17,7 +17,7 @@ This roadmap will guide you through building a Redis-like in-memory key-value st
 -   _DONE_ Implement a dynamic hash table with separate chaining or open addressing.
     Support operations: SET, GET, DEL, EXISTS.
 
--   Linked List (Foundation for Lists)
+-   _DONE_ Linked List (Foundation for Lists)
     Implement a doubly linked list to support list operations (LPUSH, RPUSH, LPOP, RPOP).
     Optimize for fast insertions and deletions.
 
