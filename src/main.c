@@ -1,23 +1,33 @@
 #include <stdio.h>
 #include "../include/hashtable.h"
+#include "../include/linkedList.h"
 
 int main() {
-    struct hashMap map;
-    initHashMap(&map);
+    struct linkedList list;
+    list_initList(&list);
 
-    set(&map, "janis", "17");
-    set(&map, "marta", "19");
-    set(&map, "martins", "20");
-    set(&map, "aigats", "50");
+    struct ListNode n1, n2, n3, n4;
+    list_setNode(&n1, 2);
+    list_setNode(&n2, 3);
+    list_setNode(&n3, 1);
+    list_setNode(&n4, 5);
 
-    char* janisAge = get(&map, "janis");
-    printf("janis age = %s\n", janisAge);
-    printf("martins age = %s\n", get(&map, "martins"));
+    list_rpush(&list, &n1);
+    list_rpush(&list, &n2);
+    list_rpush(&list, &n3);
+    list_rpush(&list, &n4);
 
-    printf("exists marta?: %i\n", exists(&map, "marta"));
-    del(&map, "marta");
-    printf("exists marta?: %i\n", exists(&map, "marta"));
-    printf("exists martina?: %i\n", exists(&map, "martina"));
+    struct ListNode* curr = list.head;
+    int currId = 0;
+    while (curr != NULL) {
+        printf("element at index %i: %i\n", currId, list_get(&list, currId)->data);
+        curr = curr->next;
+        currId++;
+    }
+
+    list_clear(&list);
+    printf("%li\n", list.size);
+
 
     return 0;
 }   

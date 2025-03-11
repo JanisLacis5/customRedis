@@ -1,4 +1,5 @@
 complile using
+
 ```bash
 gcc -Wall -Wextra -g src/main.c src/hashtable.c -o main.o && ./main.o
 ```
@@ -13,19 +14,19 @@ This roadmap will guide you through building a Redis-like in-memory key-value st
 
 ### Hash Table Implementation (Core Data Store):
 
--   *DONE* Implement a dynamic hash table with separate chaining or open addressing.
+-   _DONE_ Implement a dynamic hash table with separate chaining or open addressing.
     Support operations: SET, GET, DEL, EXISTS.
-    Linked List (Foundation for Lists)
 
--   Implement a doubly linked list to support list operations (LPUSH, RPUSH, LPOP, RPOP).
+-   Linked List (Foundation for Lists)
+    Implement a doubly linked list to support list operations (LPUSH, RPUSH, LPOP, RPOP).
     Optimize for fast insertions and deletions.
-    Dynamic Strings (Like sds in Redis)
 
--   Implement a custom string structure (char\* with metadata) for efficient memory management.
+-   Dynamic Strings (Like sds in Redis)
+    Implement a custom string structure (char\* with metadata) for efficient memory management.
     Support resizing, reference counting, and garbage collection.
-    Expiry System (TTL for Keys)
 
--   Implement a time-based expiration mechanism using a priority queue or sorted list.
+-   Expiry System (TTL for Keys)
+    Implement a time-based expiration mechanism using a priority queue or sorted list.
     Periodically remove expired keys in a background process.
 
 ## Phase 2: Basic Command Processing
@@ -36,9 +37,9 @@ This roadmap will guide you through building a Redis-like in-memory key-value st
 
 -   Implement a simple command-line interface (CLI).
     Parse input into commands and arguments.
-    Command Execution Engine
 
--   Maintain a command registry (command_name → function_pointer).
+-   Command Execution Engine
+    Maintain a command registry (command_name → function_pointer).
     Implement basic commands: SET, GET, DEL, EXISTS, EXPIRE.
 
 ## Phase 3: Networking (Turning It Into a Server)
@@ -49,13 +50,12 @@ This roadmap will guide you through building a Redis-like in-memory key-value st
 
 -   Use socket(), bind(), listen(), and accept() to handle client connections.
     Handle multiple clients using select() or epoll().
-    Client-Server Protocol
-
--   Implement a simple text-based protocol (\*3\r\n$3\r\nSET\r\n$3\r\nkey\r\n$5\r\nvalue\r\n).
+-   Client-Server Protocol
+    Implement a simple text-based protocol (\*3\r\n$3\r\nSET\r\n$3\r\nkey\r\n$5\r\nvalue\r\n).
     Support pipelining for batch command execution.
-    Multi-Threading or Event Loop (Like libevent)
 
--   Implement an event loop using epoll() (Linux) or kqueue() (BSD/macOS).
+-   Multi-Threading or Event Loop (Like libevent)
+    Implement an event loop using epoll() (Linux) or kqueue() (BSD/macOS).
     Optionally use threads for multi-core processing.
 
 ## Phase 4: Advanced Data Structures
