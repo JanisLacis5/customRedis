@@ -13,7 +13,7 @@ This roadmap will guide you through building a Redis-like in-memory key-value st
 
 ### Hash Table Implementation (Core Data Store):
 
--   Implement a dynamic hash table with separate chaining or open addressing.
+-   *DONE* Implement a dynamic hash table with separate chaining or open addressing.
     Support operations: SET, GET, DEL, EXISTS.
     Linked List (Foundation for Lists)
 
