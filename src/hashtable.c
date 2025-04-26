@@ -33,11 +33,11 @@ void set(struct hashMap* map, char* key, char* value) {
     unsigned long keyIndex = hash(key);
 
     // create a new node
-    struct node* newNode = (struct node*)malloc(sizeof(struct node*));
+    struct node* newNode = (struct node*)malloc(sizeof(struct node));
     setNode(newNode, key, value);
 
     if (map->arr[keyIndex] == NULL) {
-        // no colision -> add the node at the hashed index
+        // no collision -> add the node at the hashed index
         map->arr[keyIndex] = newNode;
     }
     else {

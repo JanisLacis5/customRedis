@@ -24,7 +24,7 @@ void list_rpush(struct linkedList* list, struct ListNode* node);
 void list_lpop(struct linkedList* list);
 void list_rpop(struct linkedList* list);
 int list_del(struct linkedList* list, int data);
-int list_clear(struct linkedList* list);
+int list_clear(struct linkedList* list, int isStackAlloc);
 struct ListNode* list_get(struct linkedList* list, size_t index);
 
 #endif

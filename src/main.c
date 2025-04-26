@@ -3,10 +3,16 @@
 #include "../include/linkedList.h"
 
 int main() {
+//    struct linkedList* list = malloc(sizeof(struct linkedList));
     struct linkedList list;
     list_initList(&list);
 
+//    struct ListNode* n1 = malloc(sizeof(struct ListNode));
+//    struct ListNode* n2 = malloc(sizeof(struct ListNode));
+//    struct ListNode* n3 = malloc(sizeof(struct ListNode));
+//    struct ListNode* n4 = malloc(sizeof(struct ListNode));
     struct ListNode n1, n2, n3, n4;
+
     list_setNode(&n1, 2);
     list_setNode(&n2, 3);
     list_setNode(&n3, 1);
@@ -25,8 +31,8 @@ int main() {
         currId++;
     }
 
-    list_clear(&list);
-    printf("%li\n", list.size);
+    list_clear(&list, 1);
+    printf("the list size: %li\n", list.size);
 
 
     return 0;

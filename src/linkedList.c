@@ -123,18 +123,22 @@ int list_del(struct linkedList* list, int data) {
     return 0;
 }
 
-int list_clear(struct linkedList* list) {
+int list_clear(struct linkedList* list, int isStackAlloc) {
     if (list->size == 0) {
         return 1;
     }
 
-    struct ListNode* prev = NULL;
-    struct ListNode* curr = list->head;
-    while (curr != NULL) {
-        prev = curr;
-        curr = curr->next;
-        free(prev);
-    }   
+    // If list is allocated on the stack, memory is freed automatically
+    if (!isStackAlloc) {
+        struct ListNode* prev = NULL;
+        struct ListNode* curr = list->head;
+        while (curr != NULL) {
+            prev = curr;
+            curr = curr->next;
+
+            free(prev);
+        }
+    }
 
     list->head = NULL;
     list->tail = NULL;
