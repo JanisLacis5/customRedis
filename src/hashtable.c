@@ -1,6 +1,6 @@
 #include "../include/hashtable.h"
 
-void setNode(struct node* node, char* key, char* value) {
+void setNode(struct Node* node, char* key, char* value) {
     // set key: value
     node->key = key;
     node->value = value;
@@ -10,12 +10,12 @@ void setNode(struct node* node, char* key, char* value) {
     return;
 }
 
-void initHashMap(struct hashMap* map) {
-    map->maxCapacity = TABLE_SIZE;
-    map->currSize = 0;
+void initHashMap(struct HashMap* map) {
+    map->max_capacity = TABLE_SIZE;
+    map->curr_size = 0;
 
     // allocate memory for an array of size maxCapacity for node pointers
-    map->arr = (struct node**)malloc(sizeof(struct node*) * map->maxCapacity);
+    map->arr = (struct Node**)malloc(sizeof(struct Node*) * map->max_capacity);
 }
 
 unsigned long hash(char *str) {
@@ -28,12 +28,12 @@ unsigned long hash(char *str) {
     return hash % TABLE_SIZE;
 }
 
-void set(struct hashMap* map, char* key, char* value) {
+void set(struct HashMap* map, char* key, char* value) {
     // hash the key
     unsigned long keyIndex = hash(key);
 
     // create a new node
-    struct node* newNode = (struct node*)malloc(sizeof(struct node));
+    struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
     setNode(newNode, key, value);
 
     if (map->arr[keyIndex] == NULL) {
@@ -45,14 +45,14 @@ void set(struct hashMap* map, char* key, char* value) {
         newNode->next = map->arr[keyIndex];
         map->arr[keyIndex] = newNode;
     }
-    map->currSize++;
+    map->curr_size++;
 }
 
-char* get(struct hashMap* map, char* key) {
+char* get(struct HashMap* map, char* key) {
     unsigned long keyIndex = hash(key);
 
     // get the node by the hash
-    struct node* keyNode = map->arr[keyIndex];
+    struct Node* keyNode = map->arr[keyIndex];
 
     // go through the linked list at key keyIndex until the necessary key is found
     while (keyNode != NULL && strcmp(keyNode->key, key) != 0) {
@@ -67,11 +67,11 @@ char* get(struct hashMap* map, char* key) {
     }
 }
 
-void del(struct hashMap* map, char* key) {
+void del(struct HashMap* map, char* key) {
     unsigned long keyIndex = hash(key);
 
-    struct node* keyNode = map->arr[keyIndex];
-    struct node* prevNode = NULL;
+    struct Node* keyNode = map->arr[keyIndex];
+    struct Node* prevNode = NULL;
 
     while (keyNode != NULL) {
         if (strcmp(keyNode->key, key) == 0) {
@@ -81,7 +81,7 @@ void del(struct hashMap* map, char* key) {
                 map->arr[keyIndex] = keyNode->next;
             }
             free(keyNode);
-            map->currSize--;
+            map->curr_size--;
             break;
         }
         prevNode = keyNode;
@@ -91,10 +91,10 @@ void del(struct hashMap* map, char* key) {
     return;
 }
 
-int exists(struct hashMap* map, char* key) {
+int exists(struct HashMap* map, char* key) {
     unsigned long keyIndex = hash(key);
 
-    struct node* keyNode = map->arr[keyIndex];
+    struct Node* keyNode = map->arr[keyIndex];
 
     while (keyNode != NULL) {
         if (strcmp(keyNode->key, key) == 0) {

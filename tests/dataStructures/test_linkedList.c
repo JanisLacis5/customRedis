@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include "unity.h"
-#include "linkedList.h"
+#include "LinkedList.h"
 
-struct linkedList list;
+struct LinkedList list;
 struct ListNode n1, n2, n3;
 
 void setUp()   {
@@ -81,7 +81,7 @@ void test_listClearStackAllocResetsAndReturnsZero() {
 
 void test_listClearHeapAllocResetsAndReturnsZero(void) {
     // Allocate and init
-    struct linkedList* heapList = malloc(sizeof(struct linkedList));
+    struct LinkedList* heapList = malloc(sizeof(struct LinkedList));
     TEST_ASSERT_NOT_NULL(heapList);
     list_initList(heapList);
 

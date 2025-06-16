@@ -1,6 +1,6 @@
-#include "../include/linkedList.h"
+#include "../include/LinkedList.h"
 
-void list_initList(struct linkedList* list) {
+void list_initList(struct LinkedList* list) {
     list->size = 0;
     list->head = NULL;
     list->tail = NULL;
@@ -16,7 +16,7 @@ void list_setNode(struct ListNode* node, int data) {
     return;
 }
 
-void list_lpush(struct linkedList* list, struct ListNode* node) {
+void list_lpush(struct LinkedList* list, struct ListNode* node) {
     if (list->size == 0) {
         list->head = node;
         list->tail = node;
@@ -31,7 +31,7 @@ void list_lpush(struct linkedList* list, struct ListNode* node) {
     return;
 }
 
-void list_rpush(struct linkedList* list, struct ListNode* node) {
+void list_rpush(struct LinkedList* list, struct ListNode* node) {
     if (list->size == 0) {
         list->head = node;
         list->tail = node;
@@ -46,7 +46,7 @@ void list_rpush(struct linkedList* list, struct ListNode* node) {
     return;
 }
 
-void list_lpop(struct linkedList* list) {
+void list_lpop(struct LinkedList* list) {
     if (list->size == 0) {
         return;
     }
@@ -66,7 +66,7 @@ void list_lpop(struct linkedList* list) {
     return;
 }
 
-void list_rpop(struct linkedList* list) {
+void list_rpop(struct LinkedList* list) {
     if (list->size == 0) {
         return;
     }
@@ -86,7 +86,7 @@ void list_rpop(struct linkedList* list) {
     return;
 }
 
-int list_del(struct linkedList* list, int data) {
+int list_del(struct LinkedList* list, int data) {
     if (list->size == 0) {
         return 1;
     }
@@ -123,7 +123,7 @@ int list_del(struct linkedList* list, int data) {
     return 0;
 }
 
-int list_clear(struct linkedList* list, int isStackAlloc) {
+int list_clear(struct LinkedList* list, int isStackAlloc) {
     if (list->size == 0) {
         return 1;
     }
@@ -146,7 +146,7 @@ int list_clear(struct linkedList* list, int isStackAlloc) {
     return 0;
 }
 
-struct ListNode* list_get(struct linkedList* list, size_t index) {
+struct ListNode* list_get(struct LinkedList* list, size_t index) {
     if (list->size == 0) {
         printf("list is empty\n");
         return NULL;

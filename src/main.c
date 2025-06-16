@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include "../include/hashtable.h"
-#include "../include/linkedList.h"
+#include "../include/LinkedList.h"
 
 int main() {
 //    struct linkedList* list = malloc(sizeof(struct linkedList));
-    struct linkedList list;
+    struct LinkedList list;
     list_initList(&list);
 
 //    struct ListNode* n1 = malloc(sizeof(struct ListNode));

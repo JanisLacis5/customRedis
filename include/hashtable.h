@@ -7,26 +7,27 @@
 
 #define TABLE_SIZE 10
 
-struct node {
+struct Node {
     char* key;
     char* value;
 
-    struct node* next;
+    struct Node* next;
 };
 
-struct hashMap {
-    int currSize, maxCapacity;
+struct HashMap {
+    int curr_size;
+    int max_capacity;
 
     // pointer to an array of node pointers
-    struct node** arr;
+    struct Node** arr;
 };
 
-void setNode(struct node* node, char* key, char* value);
-void initHashMap(struct hashMap* map);
+void setNode(struct Node* node, char* key, char* value);
+void initHashMap(struct HashMap* map);
 unsigned long hash(char* str);
-void set(struct hashMap* map, char* key, char* value);
-char* get(struct hashMap* map, char* key);
-void del(struct hashMap* map, char* key);
-int exists(struct hashMap* map, char* key);
+void set(struct HashMap* map, char* key, char* value);
+char* get(struct HashMap* map, char* key);
+void del(struct HashMap* map, char* key);
+int exists(struct HashMap* map, char* key);
 
 #endif
