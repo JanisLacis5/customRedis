@@ -5,7 +5,7 @@
 int main() {
 //    struct linkedList* list = malloc(sizeof(struct linkedList));
     struct LinkedList list;
-    list_initList(&list);
+    list_init_list(&list);
 
 //    struct ListNode* n1 = malloc(sizeof(struct ListNode));
 //    struct ListNode* n2 = malloc(sizeof(struct ListNode));
@@ -13,10 +13,10 @@ int main() {
 //    struct ListNode* n4 = malloc(sizeof(struct ListNode));
     struct ListNode n1, n2, n3, n4;
 
-    list_setNode(&n1, 2);
-    list_setNode(&n2, 3);
-    list_setNode(&n3, 1);
-    list_setNode(&n4, 5);
+    list_set_node(&n1, 2);
+    list_set_node(&n2, 3);
+    list_set_node(&n3, 1);
+    list_set_node(&n4, 5);
 
     list_rpush(&list, &n1);
     list_rpush(&list, &n2);
@@ -36,4 +36,4 @@ int main() {
 
 
     return 0;
-}   
+}

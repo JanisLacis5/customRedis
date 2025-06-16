@@ -22,12 +22,12 @@ struct HashMap {
     struct Node** arr;
 };
 
-void setNode(struct Node* node, char* key, char* value);
-void initHashMap(struct HashMap* map);
-unsigned long hash(char* str);
+void set_node(struct Node* node, char* key, char* value);
+void init_hash_map(struct HashMap* map);
+unsigned long hash(const char* str);
 void set(struct HashMap* map, char* key, char* value);
-char* get(struct HashMap* map, char* key);
-void del(struct HashMap* map, char* key);
-int exists(struct HashMap* map, char* key);
+char* get(const struct HashMap* map, const char* key);
+void del(struct HashMap* map, const char* key);
+int exists(const struct HashMap* map, const char* key);
 
 #endif

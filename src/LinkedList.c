@@ -1,19 +1,16 @@
 #include "../include/LinkedList.h"
 
-void list_initList(struct LinkedList* list) {
+void list_init_list(struct LinkedList* list) {
     list->size = 0;
     list->head = NULL;
     list->tail = NULL;
-    return;
 }
 
-void list_setNode(struct ListNode* node, int data) {
+void list_set_node(struct ListNode* node, const int data) {
     node->data = data;
 
     node->next = NULL;
     node->prev = NULL;
-
-    return;
 }
 
 void list_lpush(struct LinkedList* list, struct ListNode* node) {
@@ -28,7 +25,6 @@ void list_lpush(struct LinkedList* list, struct ListNode* node) {
     }
 
     list->size++;
-    return;
 }
 
 void list_rpush(struct LinkedList* list, struct ListNode* node) {
@@ -43,7 +39,6 @@ void list_rpush(struct LinkedList* list, struct ListNode* node) {
     }
 
     list->size++;
-    return;
 }
 
 void list_lpop(struct LinkedList* list) {
@@ -63,7 +58,6 @@ void list_lpop(struct LinkedList* list) {
 
     list->size--;
     free(head);
-    return;
 }
 
 void list_rpop(struct LinkedList* list) {
@@ -83,10 +77,9 @@ void list_rpop(struct LinkedList* list) {
 
     list->size--;
     free(tail);
-    return;
 }
 
-int list_del(struct LinkedList* list, int data) {
+int list_del(struct LinkedList* list, const int data) {
     if (list->size == 0) {
         return 1;
     }
@@ -104,15 +97,15 @@ int list_del(struct LinkedList* list, int data) {
     if (list->size == 1) {
         list->head = NULL;
         list->tail = NULL;
-    } 
+    }
     else if (curr->prev == NULL) {
         list->head = curr->next; 
         curr->next->prev = NULL;
-    } 
+    }
     else if (curr->next == NULL) {
         list->tail = curr->prev;
         curr->prev->next = NULL;
-    } 
+    }
     else {
         curr->prev->next = curr->next;
         curr->next->prev = curr->prev;
@@ -123,7 +116,7 @@ int list_del(struct LinkedList* list, int data) {
     return 0;
 }
 
-int list_clear(struct LinkedList* list, int isStackAlloc) {
+int list_clear(struct LinkedList* list, const int isStackAlloc) {
     if (list->size == 0) {
         return 1;
     }
@@ -146,7 +139,7 @@ int list_clear(struct LinkedList* list, int isStackAlloc) {
     return 0;
 }
 
-struct ListNode* list_get(struct LinkedList* list, size_t index) {
+struct ListNode* list_get(const struct LinkedList* list, const size_t index) {
     if (list->size == 0) {
         printf("list is empty\n");
         return NULL;
