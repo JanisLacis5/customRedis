@@ -6,7 +6,7 @@ struct LinkedList list;
 struct ListNode n1, n2, n3;
 
 void setUp()   {
-    list_initList(&list);
+    list_init_list(&list);
 }
 void tearDown(){
     list_clear(&list, 1);
@@ -19,7 +19,7 @@ void test_listInitShouldSetHeadTailNullAndSizeZero() {
 }
 
 void test_listSetNodeShouldSetDataAndNullifyLinks() {
-    list_setNode(&n1, 123);
+    list_set_node(&n1, 123);
     TEST_ASSERT_EQUAL_INT(123, n1.data);
     TEST_ASSERT_NULL(n1.next);
     TEST_ASSERT_NULL(n1.prev);
@@ -27,9 +27,9 @@ void test_listSetNodeShouldSetDataAndNullifyLinks() {
 
 void test_listRLPushShouldLinkAllNodesCorrectly() {
     // Set up nodes
-    list_setNode(&n1, 10);
-    list_setNode(&n2, 20);
-    list_setNode(&n3, 30);
+    list_set_node(&n1, 10);
+    list_set_node(&n2, 20);
+    list_set_node(&n3, 30);
 
     // Push nodes to the list
     list_rpush(&list, &n1);
@@ -56,7 +56,7 @@ void test_listRLPushShouldLinkAllNodesCorrectly() {
 
 void test_listGetOutOfBoundsReturnsNull() {
     TEST_ASSERT_NULL(list_get(&list, 0));
-    list_setNode(&n1, 5);
+    list_set_node(&n1, 5);
     list_rpush(&list, &n1);
     TEST_ASSERT_NULL(list_get(&list, 1));
 }
@@ -68,7 +68,7 @@ void test_listClearEmptyReturnsOne() {
 }
 
 void test_listClearStackAllocResetsAndReturnsZero() {
-    list_setNode(&n1, 5);
+    list_set_node(&n1, 5);
     list_rpush(&list, &n1);
     TEST_ASSERT_EQUAL_size_t(1, list.size);
 
@@ -83,14 +83,14 @@ void test_listClearHeapAllocResetsAndReturnsZero(void) {
     // Allocate and init
     struct LinkedList* heapList = malloc(sizeof(struct LinkedList));
     TEST_ASSERT_NOT_NULL(heapList);
-    list_initList(heapList);
+    list_init_list(heapList);
 
     // Create one heap node
     struct ListNode* heapNode = malloc(sizeof(struct ListNode));
     TEST_ASSERT_NOT_NULL(heapNode);
 
     // Set up the list
-    list_setNode(heapNode, 7);
+    list_set_node(heapNode, 7);
     list_rpush(heapList, heapNode);
     TEST_ASSERT_EQUAL_size_t(1, heapList->size);
 

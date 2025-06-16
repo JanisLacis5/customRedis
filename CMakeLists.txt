@@ -9,7 +9,7 @@ target_include_directories(Unity PUBLIC
 )
 
 add_library(customRedis STATIC
-    ${CMAKE_SOURCE_DIR}/src/linkedList.c
+    ${CMAKE_SOURCE_DIR}/src/LinkedList.c
     ${CMAKE_SOURCE_DIR}/src/hashtable.c
 )
 target_include_directories(customRedis PUBLIC
@@ -18,7 +18,7 @@ target_include_directories(customRedis PUBLIC
 
 add_executable(main
     src/main.c
-    src/linkedList.c
+    src/LinkedList.c
     src/hashtable.c
 )
 
