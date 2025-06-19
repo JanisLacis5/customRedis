@@ -1,9 +1,27 @@
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+const size_t MAX_MESSAGE_LEN = 4096;
+
+static int read_all(int fd, char *buf, ssize_t n) {
+    while (n > 0) {
+        ssize_t rec_len = read(fd, buf, n);
+        if (rec_len <= 0) {
+            return -1;
+        }
+        n -= rec_len;
+    }
+    return 0;
+}
+
+void write_all() {
+
+}
 
 int main() {
     // Create the socket
@@ -47,26 +65,35 @@ int main() {
         if (connfd == -1) {
             close(fd);
             printf("[server]: Accepting failed\n");
-            return 1;
+            continue;
         }
 
         char client_mes[100];
         char server_mes[100] = "Hello from server!";
 
-        // Receive message from the client
-        ssize_t client_mes_len = read(connfd, &client_mes, sizeof(client_mes));
-        if (client_mes_len < 0) {
-            close(connfd);
-            printf("[server]: Message reading failed\n");
-            continue;
-        }
+        while (true) {
+            // Receive message from the client
+            char message[4 + MAX_MESSAGE_LEN];
+            int err = read_all(connfd, message, 4);
 
-        // Respond
-        ssize_t server_mes_len = write(connfd, &server_mes, sizeof(server_mes));
-        if (server_mes_len < 0) {
-            close(connfd);
-            printf("[server]: Sending message failed\n");
-            continue;
+            errno = 0;
+            if (err) {
+                // ASK FOR THIS
+                printf(errno == 0 ? "[server]: EOF\\n" : "[server]: Error in reading the message length\n");
+                return -1;
+            }
+
+            uint32_t mes_len = 0;
+            memcpy(&mes_len, message, 4);
+            printf("Received the messsage len: %d\n", mes_len);
+            err = read_all(connfd, &message[4], mes_len);
+            if (err) {
+                printf("[server]: Error in reading the message\n");
+                return -1;
+            }
+            printf("[server]: Client says: %s", &message[4]);
+
+            // Respond
         }
         close(connfd);
     }
