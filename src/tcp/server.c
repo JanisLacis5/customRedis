@@ -82,7 +82,6 @@ int main() {
             errno = 0;
             int err = read_all(connfd, message, 4);
             if (err) {
-                // ASK FOR THIS
                 close(connfd);
                 printf(errno == 0 ? "[server]: EOF\\n" : "[server]: Error in reading the message length\n");
                 return err;
@@ -99,7 +98,7 @@ int main() {
             printf("[server]: Client says: %s\n", &message[4]);
 
             // Respond
-            char reply[] = "Hello from the server!\n";
+            char reply[] = "Hello from the server!";
             char wbuf[4 + sizeof(reply)];
             mes_len = strlen(reply);
             memcpy(wbuf, &mes_len, 4);
