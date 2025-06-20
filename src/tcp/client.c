@@ -1,9 +1,36 @@
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+const size_t MAX_MESSAGE_LEN = 4096;
+
+static int read_all(int fd, char *buf, size_t n) {
+    while (n > 0) {
+        ssize_t rec_len = read(fd, buf, n);
+        if (rec_len <= 0) {
+            return -1;
+        }
+        n -= rec_len;
+        buf += rec_len;
+    }
+    return 0;
+}
+
+static int write_all(int fd, char *buf, size_t n) {
+    while (n > 0) {
+        ssize_t sent_len = write(fd, buf, n);
+        if (sent_len <= 0) {
+            return -1;
+        }
+        n -= sent_len;
+        buf += sent_len;
+    }
+    return 0;
+}
 
 int main() {
     // Create the socket
@@ -28,33 +55,31 @@ int main() {
     printf("[client]: Connection successful!\n");
 
     // Sending custom messages
-    while (true) {
-        printf("Send a message to the server!\n");
-
-        char client_mes[100];
-        scanf("%s", &client_mes);
-        if (strcmp(client_mes, "exit") == 0) {
-            close(fd);
-            printf("[client]: Connection disconnected!\n");
-            return 0;
-        }
-        ssize_t client_mes_len = write(fd, client_mes, sizeof(client_mes));
-        if (client_mes_len < 0) {
-            close(fd);
-            printf("[client]: Client message sending failed\n");
-            return 1;
-        }
-
-        // Receive a message
-        char server_mes[100];
-        ssize_t server_mes_len = read(fd, server_mes, sizeof(server_mes));
-        if (server_mes_len < 0) {
-            close(fd);
-            printf("[client]: Error reveiving a message from the server\n");
-            return 1;
-        }
-
-        printf("Client sent: %s\n", client_mes);
-        printf("Server answered: %s\n", server_mes);
+    const char client_mes[] = "Hello from the client!";
+    char wbuf[4 + MAX_MESSAGE_LEN];
+    uint32_t mes_len = strlen(client_mes);
+    memcpy(wbuf, &mes_len, 4);
+    memcpy(&wbuf[4], client_mes, mes_len);
+    int err = write_all(fd, wbuf, 4 + mes_len);
+    if (err) {
+        printf("[client]: Error sending a message\n");
+        return -1;
     }
+
+    // Receive a message
+    char server_mes[4 + MAX_MESSAGE_LEN + 1];
+    errno = 0;
+    err = read_all(fd, server_mes, 4);
+    if (err) {
+        printf("[client]: Error reading the message len\n");
+        return -1;
+    }
+    memcpy(&mes_len, server_mes, 4);
+    err = read_all(fd, &server_mes[4], mes_len);
+    if (err) {
+        printf("[client]: Error reading the message\n");
+        return -1;
+    }
+
+    printf("Server says: %s\n", &server_mes[4]);
 }
