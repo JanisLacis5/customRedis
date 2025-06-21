@@ -32,7 +32,7 @@ static int write_all(int fd, char *buf, size_t n) {
     return 0;
 }
 
-int query(int fd, char *message) {
+int query(int fd, const char *message) {
     // Sending custom messages
     char wbuf[4 + MAX_MESSAGE_LEN];
     uint32_t mes_len = strlen(message);
@@ -87,16 +87,21 @@ int main() {
 
     int err = query(fd, "Hi from client n1");
     if (err) {
+        printf("[client]: Err q1\n");
         close(fd);
         return 0;
     }
+    printf("[client]: Sent the q1\n");
     err = query(fd, "Hi from client n2");
     if (err) {
+        printf("[client]: Err q2\n");
         close(fd);
         return 0;
     }
     err = query(fd, "Hi from client n3");
+    printf("[client]: Err q3\n");
     if (err) {
+        printf("[client]: Err q3\n");
         close(fd);
         return 0;
     }
