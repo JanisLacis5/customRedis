@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(RedisClone C)
+project(RedisClone C CXX)
 
 add_library(Unity STATIC
     vendor/Unity/src/unity.c
@@ -13,6 +13,7 @@ add_library(customRedis STATIC
     ${CMAKE_SOURCE_DIR}/src/hashtable.c
         src/tcp/client.c
         src/tcp/server.c
+        src/tcp/server_el.cpp
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}/include
