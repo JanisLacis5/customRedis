@@ -13,8 +13,6 @@ add_library(customRedis STATIC
     ${CMAKE_SOURCE_DIR}/src/hashtable.c
         src/tcp/client.cpp
         src/tcp/server.cpp
-        src/tcp/server_ex.cpp
-        src/tcp/client_ex.cpp
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}/include
