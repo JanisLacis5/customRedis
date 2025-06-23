@@ -91,7 +91,6 @@ int main() {
         close(fd);
         return 0;
     }
-    printf("[client]: Sent the q1\n");
     err = query(fd, "Hi from client n2");
     if (err) {
         printf("[client]: Err q2\n");
@@ -99,7 +98,6 @@ int main() {
         return 0;
     }
     err = query(fd, "Hi from client n3");
-    printf("[client]: Err q3\n");
     if (err) {
         printf("[client]: Err q3\n");
         close(fd);

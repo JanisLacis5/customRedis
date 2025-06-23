@@ -11,9 +11,10 @@ target_include_directories(Unity PUBLIC
 add_library(customRedis STATIC
     ${CMAKE_SOURCE_DIR}/src/LinkedList.c
     ${CMAKE_SOURCE_DIR}/src/hashtable.c
-        src/tcp/client.c
-        src/tcp/server.c
-        src/tcp/server_el.cpp
+        src/tcp/client.cpp
+        src/tcp/server.cpp
+        src/tcp/server_ex.cpp
+        src/tcp/client_ex.cpp
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}/include

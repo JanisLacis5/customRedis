@@ -7,6 +7,7 @@
 #include <netinet/ip.h>
 #include <vector>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <string.h>
 
 const size_t MAX_MESSAGE_LEN = 4096;
@@ -39,7 +40,7 @@ static void buf_consume(std::vector<uint8_t> &buf, size_t len) {
     buf.erase(buf.begin(), buf.begin() + len);
 }
 
-static bool try_one_req(Conn *conn) {
+static bool try_one_req(struct Conn *conn) {
     if (conn->incoming.size() < 4) {
         // we need to read - we do not even know the message size
         return false;
@@ -58,7 +59,7 @@ static bool try_one_req(Conn *conn) {
     const uint8_t *req = &conn->incoming[4];
     printf("[server]: Client says: %s\n", req);
     buf_append(conn->outgoing, (const uint8_t*)&mes_len, 4);
-    buf_append(conn->outgoing, req, 4 + mes_len);
+    buf_append(conn->outgoing, req, mes_len);
     buf_consume(conn->incoming, 4 + mes_len);
     return true;
 }
@@ -88,7 +89,7 @@ static void handle_read(Conn *conn) {
     }
 
     buf_append(conn->incoming, rbuf, (size_t)rv);
-    try_one_req(conn);
+    while(try_one_req(conn)) {}
 
     if (conn->outgoing.size() > 0) {
         conn->want_read = false;
@@ -97,12 +98,12 @@ static void handle_read(Conn *conn) {
 }
 
 static void handle_write(Conn *conn) {
-    int rv = write(conn->fd, conn->incoming.data(), conn->incoming.size());
+    int rv = write(conn->fd, conn->outgoing.data(), conn->outgoing.size());
     if (rv <= 0) {
         conn->want_close = true;
         return;
     }
-    buf_consume(conn->incoming, rv);
+    buf_consume(conn->outgoing, rv);
 
     if (conn->outgoing.size() == 0) {
         conn->want_read = true;
