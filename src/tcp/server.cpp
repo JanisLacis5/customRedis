@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <string.h>
+#include <string>
+#include <map>
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
 
@@ -21,6 +23,18 @@ struct Conn {
 
     std::vector<uint8_t> incoming; // data for the app to process
     std::vector<uint8_t> outgoing; // responses
+};
+
+// Response status codes
+enum {
+    RES_OK = 0,
+    RES_ERR = 1,    // error
+    RES_NX = 2,     // key not found
+};
+
+struct Response {
+    uint32_t status_code = RES_OK;
+    std::vector<uint8_t> data;
 };
 
 void error(int fd, const char *mes) {
@@ -40,7 +54,7 @@ static void buf_consume(std::vector<uint8_t> &buf, size_t len) {
     buf.erase(buf.begin(), buf.begin() + len);
 }
 
-static bool try_one_req(struct Conn *conn) {
+static bool try_one_req(Conn *conn) {
     if (conn->incoming.size() < 4) {
         // we need to read - we do not even know the message size
         return false;
@@ -55,12 +69,72 @@ static bool try_one_req(struct Conn *conn) {
     if (mes_len + 4 > conn->incoming.size()) {
         return false; // need to read the whole message
     }
-
     const uint8_t *req = &conn->incoming[4];
-    printf("[server]: Client says len: %d, messsage: %.100s\n", mes_len, req);
-    buf_append(conn->outgoing, (const uint8_t*)&mes_len, 4);
-    buf_append(conn->outgoing, req, mes_len);
-    buf_consume(conn->incoming, 4 + mes_len);
+
+    // Parse the request
+    std::vector<std::string> cmd;
+    uint32_t nstr = 0;
+    int err = read(conn->fd, &nstr, 4);
+    if (err) {
+        conn->want_close = true;
+        printf("[server]: Error reading nstr\n");
+        return -1;
+    }
+
+    // Read the request
+    while (cmd.size() < nstr) {
+        // Read the current token's size
+        err = read(conn->fd, &mes_len, 4);
+        if (err) {
+            conn->want_close = true;
+            printf("[server]: Error reading the request\n");
+            return -1;
+        }
+        req += 4;
+
+        // Read the token
+        std::string token;
+        token.resize(mes_len);
+        err = read(conn->fd, token.data(), mes_len);
+        if (err) {
+            conn->want_close = true;
+            printf("[server]: Error reading the request\n");
+            return -1;
+        }
+        req += mes_len;
+        cmd.push_back(token);
+    }
+
+    // Create a response
+    std::map<std::string, std::string> kv_store;
+    Response res;
+    if (nstr == 2 && cmd[0] == "get") {
+        auto it = kv_store.find(cmd[1]);
+        if (it == kv_store.end()) {
+            res.status_code = RES_NX;
+            return -1;
+        }
+        std::string val = it->second;
+        res.data.assign(val.begin(), val.end());
+    }
+    else if (nstr == 3 && cmd[0] == "set") {
+        std::string key = cmd[1];
+        std::string new_val = cmd[2];
+        kv_store[key] = new_val;
+    }
+    else if (nstr == 2 && cmd[0] == "del") {
+        kv_store.erase(cmd[1]);
+    }
+    else {
+        res.status_code = RES_ERR;
+    }
+
+    // Add the response to a buffer (total size | status_code | data)
+    uint32_t res_len = 4 + (uint32_t)res.data.size();
+    buf_append(conn->outgoing, (uint8_t*)&res_len, 4);
+    buf_append(conn->outgoing, (uint8_t*)&res.status_code, 4);
+    buf_append(conn->outgoing, res.data.data(), res.data.size());
+
     return true;
 }
 

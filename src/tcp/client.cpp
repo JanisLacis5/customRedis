@@ -53,7 +53,7 @@ int handle_read(int fd) {
         return -1;
     }
 
-    printf("Server says len:%d, message: %.100s\n", mes_len, &server_mes[4]);
+    printf("Server says len:%d, message: %.*s\n", mes_len, (mes_len > 100 ? 100 : mes_len), &server_mes[4]);
     return 0;
 }
 
