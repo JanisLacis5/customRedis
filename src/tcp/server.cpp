@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-const size_t MAX_MESSAGE_LEN = 4096;
+const size_t MAX_MESSAGE_LEN = 32 << 20;
 
 struct Conn {
     // fd returned by poll() is non-negative
@@ -57,7 +57,7 @@ static bool try_one_req(struct Conn *conn) {
     }
 
     const uint8_t *req = &conn->incoming[4];
-    printf("[server]: Client says: %s\n", req);
+    printf("[server]: Client says len: %d, messsage: %.100s\n", mes_len, req);
     buf_append(conn->outgoing, (const uint8_t*)&mes_len, 4);
     buf_append(conn->outgoing, req, mes_len);
     buf_consume(conn->incoming, 4 + mes_len);
