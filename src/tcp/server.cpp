@@ -13,6 +13,7 @@
 #include <map>
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
+std::map<std::string, std::string> kv_store;
 
 struct Conn {
     // fd returned by poll() is non-negative
@@ -60,62 +61,50 @@ static bool try_one_req(Conn *conn) {
         return false;
     }
 
-    uint32_t mes_len = 0;
-    memcpy(&mes_len, conn->incoming.data(), 4);
-    if (mes_len > MAX_MESSAGE_LEN) {
+    // Read the len of the whole message
+    uint32_t total_len = 0;
+    memcpy(&total_len, conn->incoming.data(), 4);
+    if (total_len > MAX_MESSAGE_LEN) {
         conn->want_close = true;
         return false;
     }
-    if (mes_len + 4 > conn->incoming.size()) {
-        return false; // need to read the whole message
+    if (4 + total_len > conn->incoming.size()) {
+        return false; // want read
     }
+
+    // Read the token count
     const uint8_t *req = &conn->incoming[4];
+    uint32_t nstr = 0;
+    memcpy(&nstr, req, 4);
+    req += 4;
 
     // Parse the request
     std::vector<std::string> cmd;
-    uint32_t nstr = 0;
-    int err = read(conn->fd, &nstr, 4);
-    if (err) {
-        conn->want_close = true;
-        printf("[server]: Error reading nstr\n");
-        return -1;
-    }
-
-    // Read the request
     while (cmd.size() < nstr) {
         // Read the current token's size
-        err = read(conn->fd, &mes_len, 4);
-        if (err) {
-            conn->want_close = true;
-            printf("[server]: Error reading the request\n");
-            return -1;
-        }
+        uint32_t t_len = 0;
+        memcpy(&t_len, req, 4);
         req += 4;
 
         // Read the token
         std::string token;
-        token.resize(mes_len);
-        err = read(conn->fd, token.data(), mes_len);
-        if (err) {
-            conn->want_close = true;
-            printf("[server]: Error reading the request\n");
-            return -1;
-        }
-        req += mes_len;
+        token.resize(t_len);
+        memcpy(token.data(), req, t_len);
+        req += t_len;
         cmd.push_back(token);
     }
 
     // Create a response
-    std::map<std::string, std::string> kv_store;
     Response res;
     if (nstr == 2 && cmd[0] == "get") {
         auto it = kv_store.find(cmd[1]);
         if (it == kv_store.end()) {
             res.status_code = RES_NX;
-            return -1;
         }
-        std::string val = it->second;
-        res.data.assign(val.begin(), val.end());
+        else {
+            std::string val = it->second;
+            res.data.assign(val.begin(), val.end());
+        }
     }
     else if (nstr == 3 && cmd[0] == "set") {
         std::string key = cmd[1];
@@ -134,6 +123,7 @@ static bool try_one_req(Conn *conn) {
     buf_append(conn->outgoing, (uint8_t*)&res_len, 4);
     buf_append(conn->outgoing, (uint8_t*)&res.status_code, 4);
     buf_append(conn->outgoing, res.data.data(), res.data.size());
+    buf_consume(conn->incoming, 4 + total_len);
 
     return true;
 }
@@ -157,6 +147,9 @@ static Conn* handle_accept(int fd) {
 static void handle_read(Conn *conn) {
     uint8_t rbuf[64*1024];
     int rv = read(conn->fd, rbuf, sizeof(rbuf));
+    if (rv < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        return;
+    }
     if (rv <= 0) {
         conn->want_close = true;
         return;
@@ -173,6 +166,9 @@ static void handle_read(Conn *conn) {
 
 static void handle_write(Conn *conn) {
     int rv = write(conn->fd, conn->outgoing.data(), conn->outgoing.size());
+    if (rv < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        return;
+    }
     if (rv <= 0) {
         conn->want_close = true;
         return;
@@ -261,7 +257,7 @@ int main() {
             if (fd_to_conn.size() <= (size_t)conn->fd) {
                 fd_to_conn.resize(conn->fd+1);
             }
-            fd_to_conn[fd+1] = conn;
+            fd_to_conn[conn->fd] = conn;
         }
 
         // Process the rest of the sockets (first on is the listening one so we start at i = 1)

@@ -40,40 +40,59 @@ int handle_read(int fd) {
     server_mes.resize(4);
     errno = 0;
     int err = read_all(fd, server_mes.data(), 4);
-    if (err) {
+    if (err < 0) {
         printf("[client]: Error reading the message len\n");
         return -1;
     }
+    // Get the total size of the message (status code + data)
     uint32_t mes_len = 0;
-    memcpy(&mes_len, server_mes.data(), 4);
+    memcpy(&mes_len, &server_mes[0], 4);
     server_mes.resize(4 + mes_len);
-    err = read_all(fd, &server_mes[4], mes_len);
-    if (err) {
-        printf("[client]: Error reading the message\n");
-        return -1;
-    }
 
-    printf("Server says len:%d, message: %.*s\n", mes_len, (mes_len > 100 ? 100 : mes_len), &server_mes[4]);
+    // Read the rest of the message (status code + data)
+    err = read_all(fd, &server_mes[4], mes_len);
+
+    // Get the status
+    uint32_t status_code = 0;
+    memcpy(&status_code, &server_mes[4], 4);
+
+    const uint8_t *data = &server_mes[8];
+    printf("Status code = %d, data: %s\n", status_code, data);
     return 0;
 }
 
-int handle_write(int fd, const uint8_t *message, size_t mes_len) {
+int handle_write(int fd, std::vector<std::string> &query) {
     // Sending custom messages
-    std::vector<uint8_t> wbuf;
-    wbuf.resize(4);
-    memcpy(wbuf.data(), &mes_len, 4);
-
-    wbuf.resize(4 + mes_len);
-    memcpy(&wbuf[4], message, mes_len);
-    int err = write_all(fd, wbuf.data(), wbuf.size());
-    if (err) {
-        printf("[client]: Error sending a message\n");
+    uint32_t total_len = 4;
+    for (std::string token: query) {
+        // Add size for the token and it's size
+        total_len += 4 + token.size();
+    }
+    if (total_len > MAX_MESSAGE_LEN) {
+        printf("[client]: Message too long\n");
         return -1;
     }
-    return err;
+
+    std::vector<uint8_t> wbuf(4 + total_len);
+    memcpy(&wbuf[0], &total_len, 4);
+
+    uint32_t q_len = query.size();
+    memcpy(&wbuf[4], &q_len, 4);
+
+    uint8_t *curr = &wbuf[8];
+    for (std::string token: query) {
+        uint32_t mes_len = token.size();
+        memcpy(curr, &mes_len, 4);
+        curr += 4;
+
+        memcpy(curr, token.data(), mes_len);
+        curr += mes_len;
+    }
+
+    return write_all(fd, wbuf.data(), wbuf.size());
 }
 
-int main() {
+int main(int argc, char **argv) {
     // Create the socket
     printf("[client]: Creating client socket...\n");
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -95,18 +114,22 @@ int main() {
     }
     printf("[client]: Connection successful!\n");
 
-    const size_t k = 32 << 20;
-    std::vector<std::string> queries = {
-        "query1",
-        "query2",
-        std::string(k, 'j'),
-        "query4"
-    };
-
-    for (size_t i = 0; i < queries.size(); i++) {
-        handle_write(fd, (uint8_t*)queries[i].data(), queries[i].size());
+    std::vector<std::string> cmd;
+    for (int i = 1; i < argc; i++) {
+        printf("%s ", argv[i]);
+        cmd.push_back(argv[i]);
     }
-    for (size_t i = 0; i < queries.size(); i++) {
-        handle_read(fd);
+    printf("\n");
+    int err = handle_write(fd, cmd);
+    if (err) {
+        close(fd);
+        printf("[client]: Error sending the query\n");
+        return -1;
+    }
+    err = handle_read(fd);
+    if (err) {
+        close(fd);
+        printf("[client]: Error reading the response\n");
+        return -1;
     }
 }
