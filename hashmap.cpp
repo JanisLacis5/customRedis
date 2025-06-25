@@ -7,9 +7,9 @@ const size_t REHASHING_WORK = 128;
 
 void h_init(HTab *htab, size_t n) {
     // Assert that n is a power of 2
-    assert(n > 0 && ((n-1) & n == 0));
+    assert(n > 0 && ((n-1) & n) == 0);
 
-    htab->tab = (HNode**)calloc(n, sizeof(HNode));
+    htab->tab = (HNode**)calloc(n, sizeof(HNode*));
     htab->mask = n-1;
     htab->size = 0;
 }
@@ -90,7 +90,7 @@ void hm_rehash_help(HMap *hmap) {
         nwork++;
     }
     if (hmap->older.tab && hmap->older.size == 0) {
-        free(&hmap->older.tab);
+        free(hmap->older.tab);
         hmap->older = HTab{};
     }
 }
@@ -118,7 +118,7 @@ void hm_clear(HMap* hmap) {
 }
 
 size_t hm_size(HMap* hmap) {
-    return hmap->newer.size() + hmap->older.size();
+    return hmap->newer.size + hmap->older.size;
 }
 
 

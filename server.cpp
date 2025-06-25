@@ -11,9 +11,20 @@
 #include <string.h>
 #include <string>
 #include <map>
+#include "hashmap.h"
+
+#define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
-std::map<std::string, std::string> kv_store;
+struct {
+    HMap db;
+} kv_store;
+
+struct Entry {
+    HNode node;
+    std::string key;
+    std::string value;
+};
 
 struct Conn {
     // fd returned by poll() is non-negative
@@ -37,6 +48,21 @@ struct Response {
     uint32_t status_code = RES_OK;
     std::vector<uint8_t> data;
 };
+
+static bool entry_eq(HNode *lhs, HNode *rhs) {
+    struct Entry *le = container_of(lhs, struct Entry, node);
+    struct Entry *re = container_of(rhs, struct Entry, node);
+    return le->key == re->key;
+}
+
+// FNV hash
+static uint64_t str_hash(const uint8_t *data, size_t len) {
+    uint32_t h = 0x811C9DC5;
+    for (size_t i = 0; i < len; i++) {
+        h = (h + data[i]) * 0x01000193;
+    }
+    return h;
+}
 
 void error(int fd, const char *mes) {
     close(fd);
@@ -94,25 +120,56 @@ static bool try_one_req(Conn *conn) {
         cmd.push_back(token);
     }
 
+    // Log the query
+    printf("[server]: Token from the client: ");
+    for (std::string token: cmd) {
+        printf("%s ", token.data());
+    }
+    printf("\n");
+
     // Create a response
     Response res;
     if (nstr == 2 && cmd[0] == "get") {
-        auto it = kv_store.find(cmd[1]);
-        if (it == kv_store.end()) {
+        // do a lookup
+        Entry entry;
+        entry.key = cmd[1];
+        entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
+        HNode *node = hm_lookup(&kv_store.db, &entry.node, entry_eq);
+
+        if (!node) {
             res.status_code = RES_NX;
         }
         else {
-            std::string val = it->second;
+            std::string &val = container_of(node, Entry, node)->value;
             res.data.assign(val.begin(), val.end());
         }
+
     }
     else if (nstr == 3 && cmd[0] == "set") {
-        std::string key = cmd[1];
-        std::string new_val = cmd[2];
-        kv_store[key] = new_val;
+        Entry entry;
+        entry.key = cmd[1];
+        entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
+
+        HNode *node = hm_lookup(&kv_store.db, &entry.node, entry_eq);
+        if (node) {
+            container_of(node, Entry, node) -> value = cmd[2];
+        }
+        else {
+            Entry *e = new Entry();
+            e->key = entry.key;
+            e->value = cmd[2];
+            e->node.hcode = entry.node.hcode;
+            hm_insert(&kv_store.db, &e->node);
+        }
     }
     else if (nstr == 2 && cmd[0] == "del") {
-        kv_store.erase(cmd[1]);
+        Entry entry;
+        entry.key = cmd[1];
+        entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
+        HNode *node = hm_delete(&kv_store.db, &entry.node, entry_eq);
+        if (!node) {
+            delete container_of(node, Entry, node);
+        }
     }
     else {
         res.status_code = RES_ERR;

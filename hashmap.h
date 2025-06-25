@@ -11,7 +11,7 @@ struct HNode {
 
 struct HTab {
     HNode **tab = NULL;
-    size_t mask = 0; // power of 2 array size, 2^n-1
+    size_t mask = 0; // array size is always a power of 2 (n), mask = 2^n-1
     size_t size = 0;
 };
 
