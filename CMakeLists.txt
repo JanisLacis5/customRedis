@@ -4,6 +4,8 @@ project(RedisClone C CXX)
 add_library(customRedis STATIC
     client.cpp
     server.cpp
+        hashmap.cpp
+        hashmap.h
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}
