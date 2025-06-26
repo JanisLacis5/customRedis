@@ -76,14 +76,14 @@ int handle_write(int fd, std::vector<std::string> &query) {
     std::vector<uint8_t> buf;
 
     // Add tag and len (always array because query can contain many arguments)
-    buf_append_u8(buf, (uint8_t)TAG_ARR);
+    buf_append_u8(buf, TAG_ARR);
     buf_append_u32(buf, (uint32_t)query.size());
 
     // Add each argument
     for (const std::string &token: query) {
         uint32_t len = token.size();
         // Add tag and len for the current token
-        buf_append_u8(buf, (uint8_t)TAG_STR);
+        buf_append_u8(buf, TAG_STR);
         buf_append_u32(buf, len);
 
         // Add the value

@@ -39,24 +39,19 @@ struct Conn {
 };
 
 // Response status codes
-enum {
+enum ResponseStatusCodes {
     RES_OK = 0,
     RES_ERR = 1,    // error
     RES_NX = 2,     // key not found
 };
 
-enum {
+enum Tags {
     TAG_INT = 0,
     TAG_STR = 1,
     TAG_ARR = 2,
     TAG_NULL = 3,
     TAG_ERROR = 4,
     TAG_DOUBLE = 5
-};
-
-struct Response {
-    uint32_t status_code = RES_OK;
-    std::vector<uint8_t> data;
 };
 
 static bool entry_eq(HNode *lhs, HNode *rhs) {
@@ -83,22 +78,27 @@ static void fd_set_non_blocking(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 }
 
-void do_get(std::string &key, Response &res) {
+void do_get(std::string &key, Conn *conn) {
     Entry entry;
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
     HNode *node = hm_lookup(&kv_store.db, &entry.node, entry_eq);
 
     if (!node) {
-        res.status_code = RES_NX;
+        conn->outgoing.resize(conn->outgoing.size() - 4); // remove the OK status code
+        buf_append_u32(conn->outgoing, RES_NX);
+        buf_append_u8(conn->outgoing, TAG_NULL);
     }
     else {
         std::string &val = container_of(node, Entry, node)->value;
-        res.data.assign(val.begin(), val.end());
+
+        buf_append_u8(conn->outgoing, TAG_STR);
+        buf_append_u32(conn->outgoing, (uint32_t)val.size());
+        buf_append(conn->outgoing, (uint8_t*)val.data(), val.size());
     }
 }
 
-void do_set(std::string &key, std::string &value) {
+void do_set(Conn *conn, std::string &key, std::string &value) {
     Entry entry;
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
@@ -114,9 +114,10 @@ void do_set(std::string &key, std::string &value) {
         e->node.hcode = entry.node.hcode;
         hm_insert(&kv_store.db, &e->node);
     }
+    buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
-void do_del(std::string &key) {
+void do_del(Conn *conn, std::string &key) {
     Entry entry;
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
@@ -124,13 +125,31 @@ void do_del(std::string &key) {
     if (!node) {
         delete container_of(node, Entry, node);
     }
+
+    buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
-static bool try_one_req(Conn *conn) {
-    if (conn->incoming.size() < 4) {
-        // we need to read - we do not even know the message size
-        return false;
+bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
+    std::string key = container_of(node, Entry, node)->value;
+    keys.push_back(key);
+    return true;
+}
+
+void do_keys(Conn *conn) {
+    buf_append_u8(conn->outgoing, TAG_ARR);
+
+    std::vector<std::string> keys;
+    hm_keys(&kv_store.db, &hm_keys_cb, keys);
+
+    buf_append_u32(conn->outgoing, keys.size());
+    for (std::string &key: keys) {
+        buf_append_u8(conn->outgoing, TAG_STR);
+        buf_append_u32(conn->outgoing, key.size());
+        buf_append(conn->outgoing, (uint8_t*)key.data(), key.size());
     }
+}
+
+std::pair<uint32_t, uint32_t> parse_cmd(Conn *conn, std::vector<std::string> &cmd) {
     uint32_t total_len = 5; // tag + query size
 
     // Read the first tag (arr) and len
@@ -143,7 +162,6 @@ static bool try_one_req(Conn *conn) {
     const uint8_t *req = &conn->incoming[5];
 
     // Parse the request
-    std::vector<std::string> cmd;
     while (cmd.size() < nstr) {
         // Read the current token's size and tag (str)
         uint8_t tag;
@@ -163,6 +181,37 @@ static bool try_one_req(Conn *conn) {
         total_len += 5 + t_len;
     }
 
+    return {nstr, total_len};
+}
+
+void out_buffer(Conn *conn, std::vector<std::string> &cmd, const uint32_t &nstr) {
+    if (nstr == 2 && cmd[0] == "get") {
+        do_get(cmd[1], conn);
+    }
+    else if (nstr == 3 && cmd[0] == "set") {
+        do_set(conn, cmd[1], cmd[2]);
+    }
+    else if (nstr == 2 && cmd[0] == "del") {
+        do_del(conn, cmd[1]);
+    }
+    else if (nstr == 1 && cmd[0] == "keys") {
+        do_keys(conn);
+    }
+    else {
+        // TODO: add error message
+        buf_append_u32(conn->outgoing, RES_ERR);
+        buf_append_u8(conn->outgoing, TAG_NULL);
+    }
+}
+
+static bool try_one_req(Conn *conn) {
+    if (conn->incoming.size() < 4) {
+        // we need to read - we do not even know the message size
+        return false;
+    }
+    std::vector<std::string> cmd;
+    auto [nstr, total_len] = parse_cmd(conn, cmd);
+
     // Log the query
     printf("[server]: Token from the client: ");
     for (std::string token: cmd) {
@@ -170,26 +219,15 @@ static bool try_one_req(Conn *conn) {
     }
     printf("\n");
 
-    // Create a response
-    Response res;
-    if (nstr == 2 && cmd[0] == "get") {
-        do_get(cmd[1], res);
-    }
-    else if (nstr == 3 && cmd[0] == "set") {
-        do_set(cmd[1], cmd[2]);
-    }
-    else if (nstr == 2 && cmd[0] == "del") {
-        do_del(cmd[1]);
-    }
-    else {
-        res.status_code = RES_ERR;
-    }
+    // Add the first tags that will always be there
+    buf_append_u8(conn->outgoing, TAG_ARR);
+    buf_append_u32(conn->outgoing, 2);
+    buf_append_u8(conn->outgoing, TAG_INT);
+    buf_append_u32(conn->outgoing, RES_OK);
 
-    // Add the response to a buffer (total size | status_code | data)
-    uint32_t res_len = 4 + (uint32_t)res.data.size();
-    buf_append(conn->outgoing, (uint8_t*)&res_len, 4);
-    buf_append(conn->outgoing, (uint8_t*)&res.status_code, 4);
-    buf_append(conn->outgoing, res.data.data(), res.data.size());
+    // Create the output buffer. Each build starts with the status code
+    out_buffer(conn, cmd, nstr);
+
     buf_consume(conn->incoming, total_len);
 
     return true;

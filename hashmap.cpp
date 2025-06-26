@@ -121,6 +121,25 @@ size_t hm_size(HMap* hmap) {
     return hmap->newer.size + hmap->older.size;
 }
 
+bool h_foreach(HTab *htab, bool (*f)(HNode*, std::vector<std::string> &), std::vector<std::string> &arg) {
+    for (int i = 0; i <= htab->mask; i++) {
+        HNode *curr = htab->tab[i];
+        while (curr) {
+            if (!f(curr, arg)) {
+                return false;
+            }
+            curr = curr->next;
+        }
+    }
+    return true;
+}
+
+void hm_keys(HMap* hmap, bool (*f)(HNode*, std::vector<std::string> &), std::vector<std::string> &arg) {
+    h_foreach(&hmap->newer, f, arg);
+    h_foreach(&hmap->older, f, arg);
+}
+
+
 
 
 

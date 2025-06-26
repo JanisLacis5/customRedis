@@ -16,3 +16,7 @@ void buf_append_u8(std::vector<uint8_t> &buf, uint8_t data) {
 void buf_append_u32(std::vector<uint8_t> &buf, uint32_t data) {
     buf_append(buf, (uint8_t*)&data, 4);
 }
+
+void buf_append_double(std::vector<uint8_t> &buf, double data) {
+    buf_append(buf, (uint8_t*)&data, 8);
+}

@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string>
+#include <vector>
 
 struct HNode {
     HNode *next = NULL;
@@ -26,5 +28,6 @@ void hm_insert(HMap *hmap, HNode *node);
 HNode* hm_delete(HMap *hmap, HNode *key, bool (*eq)(HNode*, HNode*));
 void hm_clear(HMap *hmap);
 size_t hm_size(HMap *hmap);
+void hm_keys(HMap* hmap, bool (*f)(HNode*, std::vector<std::string> &), std::vector<std::string> &arg);
 
 #endif //HASHMAP_H
