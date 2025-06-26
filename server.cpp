@@ -149,9 +149,7 @@ void do_keys(Conn *conn) {
     }
 }
 
-std::pair<uint32_t, uint32_t> parse_cmd(Conn *conn, std::vector<std::string> &cmd) {
-    uint32_t total_len = 5; // tag + query size
-
+size_t parse_cmd(Conn *conn, std::vector<std::string> &cmd) {
     // Read the first tag (arr) and len
     uint8_t first_tag = 0;
     uint32_t nstr = 0;
@@ -176,12 +174,9 @@ std::pair<uint32_t, uint32_t> parse_cmd(Conn *conn, std::vector<std::string> &cm
         memcpy(token.data(), req, t_len);
         req += t_len;
         cmd.push_back(token);
-
-        // tag(1) + len_int(4) + len(n)
-        total_len += 5 + t_len;
     }
 
-    return {nstr, total_len};
+    return nstr;
 }
 
 void out_buffer(Conn *conn, std::vector<std::string> &cmd, const uint32_t &nstr) {
@@ -231,8 +226,14 @@ static bool try_one_req(Conn *conn) {
         // we need to read - we do not even know the message size
         return false;
     }
+
+    // Read the header
+    size_t total_len = 0;
+    memcpy(&total_len, conn->incoming.data(), 4);
+
+    // Parse the query
     std::vector<std::string> cmd;
-    auto [nstr, total_len] = parse_cmd(conn, cmd);
+    size_t nstr = parse_cmd(conn, cmd);
 
     // Log the query
     printf("[server]: Token from the client: ");
@@ -250,7 +251,7 @@ static bool try_one_req(Conn *conn) {
 
     // Add the total length and clean up the incoming buffer
     after_res_build(conn->outgoing, header_pos);
-    buf_consume(conn->incoming, total_len);
+    buf_consume(conn->incoming, 4 + total_len);
 
     return true;
 }

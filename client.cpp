@@ -121,7 +121,16 @@ int handle_read(int fd) {
 }
 
 int handle_write(int fd, std::vector<std::string> &query) {
-    std::vector<uint8_t> buf;
+    std::vector<uint8_t> buf(4);
+
+    // Calculate the total write buffer size
+    size_t total_size = 5;  // initial tag + query.size()
+    for (const std::string &token: query) {
+        total_size += 5 + token.size(); // tag(1) + size(4) + token_len(n)
+    }
+
+    // Add the size header
+    memcpy(&buf[0], &total_size, 4);
 
     // Add tag and len (always array because query can contain many arguments)
     buf_append_u8(buf, TAG_ARR);
