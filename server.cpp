@@ -45,6 +45,15 @@ enum {
     RES_NX = 2,     // key not found
 };
 
+enum {
+    TAG_INT = 0,
+    TAG_STR = 1,
+    TAG_ARR = 2,
+    TAG_NULL = 3,
+    TAG_ERROR = 4,
+    TAG_DOUBLE = 5
+};
+
 struct Response {
     uint32_t status_code = RES_OK;
     std::vector<uint8_t> data;
@@ -122,29 +131,24 @@ static bool try_one_req(Conn *conn) {
         // we need to read - we do not even know the message size
         return false;
     }
+    uint32_t total_len = 5; // tag + query size
 
-    // Read the len of the whole message
-    uint32_t total_len = 0;
-    memcpy(&total_len, conn->incoming.data(), 4);
-    if (total_len > MAX_MESSAGE_LEN) {
-        conn->want_close = true;
-        return false;
-    }
-    if (4 + total_len > conn->incoming.size()) {
-        return false; // want read
-    }
+    // Read the first tag (arr) and len
+    uint8_t first_tag = 0;
+    uint32_t nstr = 0;
+    memcpy(&first_tag, &conn->incoming[0], 1);
+    memcpy(&nstr, &conn->incoming[1], 4);
 
     // Read the token count
-    const uint8_t *req = &conn->incoming[4];
-    uint32_t nstr = 0;
-    memcpy(&nstr, req, 4);
-    req += 4;
+    const uint8_t *req = &conn->incoming[5];
 
     // Parse the request
     std::vector<std::string> cmd;
     while (cmd.size() < nstr) {
-        // Read the current token's size
+        // Read the current token's size and tag (str)
+        uint8_t tag;
         uint32_t t_len = 0;
+        memcpy(&tag, req++, 1);
         memcpy(&t_len, req, 4);
         req += 4;
 
@@ -154,6 +158,9 @@ static bool try_one_req(Conn *conn) {
         memcpy(token.data(), req, t_len);
         req += t_len;
         cmd.push_back(token);
+
+        // tag(1) + len_int(4) + len(n)
+        total_len += 5 + t_len;
     }
 
     // Log the query
@@ -183,7 +190,7 @@ static bool try_one_req(Conn *conn) {
     buf_append(conn->outgoing, (uint8_t*)&res_len, 4);
     buf_append(conn->outgoing, (uint8_t*)&res.status_code, 4);
     buf_append(conn->outgoing, res.data.data(), res.data.size());
-    buf_consume(conn->incoming, 4 + total_len);
+    buf_consume(conn->incoming, total_len);
 
     return true;
 }

@@ -8,7 +8,18 @@
 #include <vector>
 #include <string>
 
+#include "buffer_funcs.h"
+
 const size_t MAX_MESSAGE_LEN = 4096;
+
+enum {
+    TAG_INT = 0,
+    TAG_STR = 1,
+    TAG_ARR = 2,
+    TAG_NULL = 3,
+    TAG_ERROR = 4,
+    TAG_DOUBLE = 5
+};
 
 static int read_all(int fd, uint8_t *buf, size_t n) {
     while (n > 0) {
@@ -62,34 +73,28 @@ int handle_read(int fd) {
 }
 
 int handle_write(int fd, std::vector<std::string> &query) {
-    // Sending custom messages
-    uint32_t total_len = 4;
-    for (std::string token: query) {
-        // Add size for the token and it's size
-        total_len += 4 + token.size();
+    std::vector<uint8_t> buf;
+
+    // Add tag and len (always array because query can contain many arguments)
+    buf_append_u8(buf, (uint8_t)TAG_ARR);
+    buf_append_u32(buf, (uint32_t)query.size());
+
+    // Add each argument
+    for (const std::string &token: query) {
+        uint32_t len = token.size();
+        // Add tag and len for the current token
+        buf_append_u8(buf, (uint8_t)TAG_STR);
+        buf_append_u32(buf, len);
+
+        // Add the value
+        buf_append(buf, (uint8_t*)token.data(), len);
     }
-    if (total_len > MAX_MESSAGE_LEN) {
+
+    if (buf.size() > MAX_MESSAGE_LEN) {
         printf("[client]: Message too long\n");
         return -1;
     }
-
-    std::vector<uint8_t> wbuf(4 + total_len);
-    memcpy(&wbuf[0], &total_len, 4);
-
-    uint32_t q_len = query.size();
-    memcpy(&wbuf[4], &q_len, 4);
-
-    uint8_t *curr = &wbuf[8];
-    for (std::string token: query) {
-        uint32_t mes_len = token.size();
-        memcpy(curr, &mes_len, 4);
-        curr += 4;
-
-        memcpy(curr, token.data(), mes_len);
-        curr += mes_len;
-    }
-
-    return write_all(fd, wbuf.data(), wbuf.size());
+    return write_all(fd, buf.data(), buf.size());
 }
 
 int main(int argc, char **argv) {
