@@ -204,6 +204,28 @@ void out_buffer(Conn *conn, std::vector<std::string> &cmd, const uint32_t &nstr)
     }
 }
 
+void before_res_build(std::vector<uint8_t> &out, uint32_t &header) {
+    // Add the first tags that will always be there
+    buf_append_u8(out, TAG_ARR);
+    buf_append_u32(out, 2);
+    buf_append_u8(out, TAG_INT);
+    buf_append_u32(out, RES_OK);
+
+    // Reserve size for the total message len
+    header = out.size();
+    buf_append_u32(out, 0);
+}
+
+void after_res_build(std::vector<uint8_t> &out, uint32_t &header) {
+    // Add the header
+    size_t mes_len = out.size() - header - 4;
+    if (mes_len > MAX_MESSAGE_LEN) {
+        printf("[server]: Message too long\n");
+        return;
+    }
+    memcpy(&out[header], &mes_len, 4);
+}
+
 static bool try_one_req(Conn *conn) {
     if (conn->incoming.size() < 4) {
         // we need to read - we do not even know the message size
@@ -220,14 +242,14 @@ static bool try_one_req(Conn *conn) {
     printf("\n");
 
     // Add the first tags that will always be there
-    buf_append_u8(conn->outgoing, TAG_ARR);
-    buf_append_u32(conn->outgoing, 2);
-    buf_append_u8(conn->outgoing, TAG_INT);
-    buf_append_u32(conn->outgoing, RES_OK);
+    uint32_t header_pos = 0;
+    before_res_build(conn->outgoing, header_pos);
 
     // Create the output buffer. Each build starts with the status code
     out_buffer(conn, cmd, nstr);
 
+    // Add the total length and clean up the incoming buffer
+    after_res_build(conn->outgoing, header_pos);
     buf_consume(conn->incoming, total_len);
 
     return true;

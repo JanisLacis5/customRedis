@@ -45,31 +45,79 @@ static int write_all(int fd, uint8_t *buf, size_t n) {
     return 0;
 }
 
+void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len) {
+    if (curr >= 4 + total_len) {
+        return;
+    }
+
+    // Read the tag
+    uint8_t tag = 0;
+    memcpy(&tag, &buf[curr++], 1);
+
+    if (tag == TAG_ARR) {
+        // Read the size of the array
+        uint32_t arr_size = 0;
+        memcpy(&arr_size, &buf[curr], 4);
+        curr += 4;
+
+        printf("Array of %d elements: ", &arr_size);
+    }
+    else if (tag == TAG_STR) {
+        // Read the size
+        uint32_t str_size = 0;
+        memcpy(&str_size, &buf[curr], 4);
+        curr += 4;
+
+        // Print the string
+        std::string str;
+        str.resize(str_size);
+        memcpy(str.data(), &buf[curr], str_size);
+        curr += str_size;
+
+        printf("%s ", str.data());
+    }
+    else if (tag == TAG_DOUBLE) {
+        // Read the double
+        double data = 0;
+        memcpy(&data, &buf[curr], 8);
+        curr += 8;
+
+        // Print it
+        printf("%d ", &data);
+    }
+    else if (tag == TAG_INT) {
+        // Read the int
+        uint32_t data = 0;
+        memcpy(&data, &buf[curr], 4);
+        curr += 4;
+
+        printf("%d ", &data);
+    }
+    else if (tag == TAG_ERROR) {
+        // TODO: print the error message when it is implemented
+    }
+
+    print_res(buf, curr, total_len);
+}
+
 int handle_read(int fd) {
-    // Receive a message
-    std::vector<uint8_t> server_mes;
-    server_mes.resize(4);
-    errno = 0;
-    int err = read_all(fd, server_mes.data(), 4);
-    if (err < 0) {
-        printf("[client]: Error reading the message len\n");
+    std::vector<uint8_t> buf;
+
+    // Read the total len
+    int err = read(fd, &buf[0], 4);
+    if (err) {
+        printf("[client]: Error reading total_len\n");
         return -1;
     }
-    // Get the total size of the message (status code + data)
-    uint32_t mes_len = 0;
-    memcpy(&mes_len, &server_mes[0], 4);
-    server_mes.resize(4 + mes_len);
+    uint32_t total_len = 0;
+    memcpy(&total_len, &buf[0], 4);
 
-    // Read the rest of the message (status code + data)
-    err = read_all(fd, &server_mes[4], mes_len);
+    // Read everything
+    buf.resize(4 + total_len);
+    err = read_all(fd, &buf[4], total_len);
 
-    // Get the status
-    uint32_t status_code = 0;
-    memcpy(&status_code, &server_mes[4], 4);
-
-    const uint8_t *data = &server_mes[8];
-    printf("Status code = %d, data: %s\n", status_code, data);
-    return 0;
+    size_t curr = 4;
+    print_res(buf, curr, total_len);
 }
 
 int handle_write(int fd, std::vector<std::string> &query) {
