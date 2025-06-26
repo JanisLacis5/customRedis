@@ -80,6 +80,49 @@ static void buf_consume(std::vector<uint8_t> &buf, size_t len) {
     buf.erase(buf.begin(), buf.begin() + len);
 }
 
+void do_get(std::string &key, Response &res) {
+    Entry entry;
+    entry.key = key;
+    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
+    HNode *node = hm_lookup(&kv_store.db, &entry.node, entry_eq);
+
+    if (!node) {
+        res.status_code = RES_NX;
+    }
+    else {
+        std::string &val = container_of(node, Entry, node)->value;
+        res.data.assign(val.begin(), val.end());
+    }
+}
+
+void do_set(std::string &key, std::string &value) {
+    Entry entry;
+    entry.key = key;
+    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
+
+    HNode *node = hm_lookup(&kv_store.db, &entry.node, entry_eq);
+    if (node) {
+        container_of(node, Entry, node) -> value = value;
+    }
+    else {
+        Entry *e = new Entry();
+        e->key = entry.key;
+        e->value = value;
+        e->node.hcode = entry.node.hcode;
+        hm_insert(&kv_store.db, &e->node);
+    }
+}
+
+void do_del(std::string &key) {
+    Entry entry;
+    entry.key = key;
+    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
+    HNode *node = hm_delete(&kv_store.db, &entry.node, entry_eq);
+    if (!node) {
+        delete container_of(node, Entry, node);
+    }
+}
+
 static bool try_one_req(Conn *conn) {
     if (conn->incoming.size() < 4) {
         // we need to read - we do not even know the message size
@@ -129,46 +172,13 @@ static bool try_one_req(Conn *conn) {
     // Create a response
     Response res;
     if (nstr == 2 && cmd[0] == "get") {
-        // do a lookup
-        Entry entry;
-        entry.key = cmd[1];
-        entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-        HNode *node = hm_lookup(&kv_store.db, &entry.node, entry_eq);
-
-        if (!node) {
-            res.status_code = RES_NX;
-        }
-        else {
-            std::string &val = container_of(node, Entry, node)->value;
-            res.data.assign(val.begin(), val.end());
-        }
-
+        do_get(cmd[1], res);
     }
     else if (nstr == 3 && cmd[0] == "set") {
-        Entry entry;
-        entry.key = cmd[1];
-        entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-
-        HNode *node = hm_lookup(&kv_store.db, &entry.node, entry_eq);
-        if (node) {
-            container_of(node, Entry, node) -> value = cmd[2];
-        }
-        else {
-            Entry *e = new Entry();
-            e->key = entry.key;
-            e->value = cmd[2];
-            e->node.hcode = entry.node.hcode;
-            hm_insert(&kv_store.db, &e->node);
-        }
+        do_set(cmd[1], cmd[2]);
     }
     else if (nstr == 2 && cmd[0] == "del") {
-        Entry entry;
-        entry.key = cmd[1];
-        entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-        HNode *node = hm_delete(&kv_store.db, &entry.node, entry_eq);
-        if (!node) {
-            delete container_of(node, Entry, node);
-        }
+        do_del(cmd[1]);
     }
     else {
         res.status_code = RES_ERR;
