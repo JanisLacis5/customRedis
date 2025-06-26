@@ -10,6 +10,8 @@
 #include <string.h>
 #include <string>
 #include <map>
+
+#include "buffer_funcs.h"
 #include "hashmap.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
@@ -70,14 +72,6 @@ void error(int fd, const char *mes) {
 
 static void fd_set_non_blocking(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
-}
-
-static void buf_append(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
-    buf.insert(buf.end(), data, data+len);
-}
-
-static void buf_consume(std::vector<uint8_t> &buf, size_t len) {
-    buf.erase(buf.begin(), buf.begin() + len);
 }
 
 void do_get(std::string &key, Response &res) {
