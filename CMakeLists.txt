@@ -13,6 +13,7 @@ add_library(customRedis STATIC
         redis_functions.cpp
         redis_functions.h
         server.h
+        tests/test_avl.cpp
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}

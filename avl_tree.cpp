@@ -3,7 +3,7 @@
 
 #include "avl_tree.h"
 
-static uint32_t avl_height(AVLNode *node) {
+uint32_t avl_height(AVLNode *node) {
     if (!node) {
         return 0;
     }
@@ -151,7 +151,7 @@ AVLNode* avl_del(AVLNode *to_delete) {
     if (parent) {
         from = parent->left == to_delete ? &parent->left : &parent->right;
     }
-    from = &victim;
+    *from = victim;
 
     return root;
 }
