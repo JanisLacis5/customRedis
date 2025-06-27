@@ -247,7 +247,7 @@ static bool try_one_req(Conn *conn) {
 
     // Add the first tags that will always be there
     uint32_t header_pos = 0;
-    before_res_build(conn->outgoing, header_pos);]
+    before_res_build(conn->outgoing, header_pos);
 
     // Create the output buffer. Each build starts with the status code
     out_buffer(conn, cmd, nstr);

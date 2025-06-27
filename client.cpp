@@ -47,6 +47,7 @@ static int write_all(int fd, uint8_t *buf, size_t n) {
 
 void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len) {
     if (curr >= 4 + total_len) {
+        printf("\n");
         return;
     }
 
@@ -60,7 +61,7 @@ void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len
         memcpy(&arr_size, &buf[curr], 4);
         curr += 4;
 
-        printf("Array of %d elements: ", arr_size);
+        printf("Array of %d elements:\n", arr_size);
     }
     else if (tag == TAG_STR) {
         // Read the size
