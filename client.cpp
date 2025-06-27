@@ -45,7 +45,7 @@ static int write_all(int fd, uint8_t *buf, size_t n) {
     return 0;
 }
 
-void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len) {
+static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len) {
     if (curr >= 4 + total_len) {
         printf("\n");
         return;
@@ -101,7 +101,7 @@ void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len
     print_res(buf, curr, total_len);
 }
 
-int handle_read(int fd) {
+static int handle_read(int fd) {
     std::vector<uint8_t> buf(4);
 
     // Read the total len
@@ -126,7 +126,7 @@ int handle_read(int fd) {
     return 0;
 }
 
-int handle_write(int fd, std::vector<std::string> &query) {
+static int handle_write(int fd, std::vector<std::string> &query) {
     std::vector<uint8_t> buf;
 
     // Calculate the total write buffer size
