@@ -13,7 +13,7 @@ struct AVLNode {
 };
 
 void avl_init(AVLNode *node);
-AVLNode* avl_insert(AVLNode *root, AVLNode *to_insert, bool (*is_smaller)(AVLNode*, AVLNode*));
+AVLNode* avl_fix(AVLNode *root);
 AVLNode* avl_del(AVLNode *root, AVLNode *to_delete, bool (*is_smaller)(AVLNode*, AVLNode*));
 
 #endif //AVL_TREE_H
