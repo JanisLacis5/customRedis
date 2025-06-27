@@ -101,10 +101,10 @@ void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len
 }
 
 int handle_read(int fd) {
-    std::vector<uint8_t> buf;
+    std::vector<uint8_t> buf(4);
 
     // Read the total len
-    int err = read(fd, &buf[0], 4);
+    int err = read_all(fd, &buf[0], 4);
     if (err) {
         printf("[client]: Error reading total_len\n");
         return -1;
@@ -114,7 +114,11 @@ int handle_read(int fd) {
 
     // Read everything
     buf.resize(4 + total_len);
-    err = read_all(fd, &buf[4], total_len);
+    err = read_all(fd, &buf[4], total_len); // TODO: stuck here...
+    if (err) {
+        printf("[client]: Error reading the full message\n");
+        return -1;
+    }
 
     size_t curr = 4;
     print_res(buf, curr, total_len);
