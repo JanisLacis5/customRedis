@@ -198,15 +198,15 @@ void out_buffer(Conn *conn, std::vector<std::string> &cmd, const uint32_t &nstr)
 }
 
 void before_res_build(std::vector<uint8_t> &out, uint32_t &header) {
+    // Reserve size for the total message len
+    header = out.size();
+    buf_append_u32(out, 0);
+
     // Add the first tags that will always be there
     buf_append_u8(out, TAG_ARR);
     buf_append_u32(out, 2);
     buf_append_u8(out, TAG_INT);
     buf_append_u32(out, RES_OK);
-
-    // Reserve size for the total message len
-    header = out.size();
-    buf_append_u32(out, 0);
 }
 
 void after_res_build(std::vector<uint8_t> &out, uint32_t &header) {
@@ -247,7 +247,7 @@ static bool try_one_req(Conn *conn) {
 
     // Add the first tags that will always be there
     uint32_t header_pos = 0;
-    before_res_build(conn->outgoing, header_pos);
+    before_res_build(conn->outgoing, header_pos);]
 
     // Create the output buffer. Each build starts with the status code
     out_buffer(conn, cmd, nstr);

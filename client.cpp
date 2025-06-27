@@ -114,7 +114,7 @@ int handle_read(int fd) {
 
     // Read everything
     buf.resize(4 + total_len);
-    err = read_all(fd, &buf[4], total_len); // TODO: stuck here...
+    err = read_all(fd, &buf[4], total_len);
     if (err) {
         printf("[client]: Error reading the full message\n");
         return -1;
