@@ -60,7 +60,7 @@ void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len
         memcpy(&arr_size, &buf[curr], 4);
         curr += 4;
 
-        printf("Array of %d elements: ", &arr_size);
+        printf("Array of %d elements: ", arr_size);
     }
     else if (tag == TAG_STR) {
         // Read the size
@@ -83,7 +83,7 @@ void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len
         curr += 8;
 
         // Print it
-        printf("%d ", &data);
+        printf("%f ", data);
     }
     else if (tag == TAG_INT) {
         // Read the int
@@ -91,7 +91,7 @@ void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len
         memcpy(&data, &buf[curr], 4);
         curr += 4;
 
-        printf("%d ", &data);
+        printf("%d ", data);
     }
     else if (tag == TAG_ERROR) {
         // TODO: print the error message when it is implemented
@@ -118,19 +118,25 @@ int handle_read(int fd) {
 
     size_t curr = 4;
     print_res(buf, curr, total_len);
+    return 0;
 }
 
 int handle_write(int fd, std::vector<std::string> &query) {
-    std::vector<uint8_t> buf(4);
+    std::vector<uint8_t> buf;
 
     // Calculate the total write buffer size
-    size_t total_size = 5;  // initial tag + query.size()
+    uint32_t total_size = 5;  // initial tag + query.size()
     for (const std::string &token: query) {
         total_size += 5 + token.size(); // tag(1) + size(4) + token_len(n)
     }
 
+    if (total_size > MAX_MESSAGE_LEN) {
+        printf("[client]: Message too large\n");
+        return -1;
+    }
+
     // Add the size header
-    memcpy(&buf[0], &total_size, 4);
+    buf_append_u32(buf, total_size);
 
     // Add tag and len (always array because query can contain many arguments)
     buf_append_u8(buf, TAG_ARR);
@@ -147,10 +153,6 @@ int handle_write(int fd, std::vector<std::string> &query) {
         buf_append(buf, (uint8_t*)token.data(), len);
     }
 
-    if (buf.size() > MAX_MESSAGE_LEN) {
-        printf("[client]: Message too long\n");
-        return -1;
-    }
     return write_all(fd, buf.data(), buf.size());
 }
 

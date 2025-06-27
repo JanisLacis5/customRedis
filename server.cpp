@@ -149,30 +149,28 @@ void do_keys(Conn *conn) {
     }
 }
 
-size_t parse_cmd(Conn *conn, std::vector<std::string> &cmd) {
+size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
     // Read the first tag (arr) and len
     uint8_t first_tag = 0;
     uint32_t nstr = 0;
-    memcpy(&first_tag, &conn->incoming[0], 1);
-    memcpy(&nstr, &conn->incoming[1], 4);
-
-    // Read the token count
-    const uint8_t *req = &conn->incoming[5];
+    memcpy(&first_tag, buf++, 1);
+    memcpy(&nstr, buf, 4);
+    buf += 4;
 
     // Parse the request
     while (cmd.size() < nstr) {
         // Read the current token's size and tag (str)
         uint8_t tag;
         uint32_t t_len = 0;
-        memcpy(&tag, req++, 1);
-        memcpy(&t_len, req, 4);
-        req += 4;
+        memcpy(&tag, buf++, 1);
+        memcpy(&t_len, buf, 4);
+        buf += 4;
 
         // Read the token
         std::string token;
         token.resize(t_len);
-        memcpy(token.data(), req, t_len);
-        req += t_len;
+        memcpy(token.data(), buf, t_len);
+        buf += t_len;
         cmd.push_back(token);
     }
 
@@ -231,9 +229,14 @@ static bool try_one_req(Conn *conn) {
     size_t total_len = 0;
     memcpy(&total_len, conn->incoming.data(), 4);
 
+    if (conn->incoming.size() < total_len + 4) {
+        // need read
+        return false;
+    }
+
     // Parse the query
     std::vector<std::string> cmd;
-    size_t nstr = parse_cmd(conn, cmd);
+    size_t nstr = parse_cmd(&conn->incoming[4], cmd);
 
     // Log the query
     printf("[server]: Token from the client: ");
