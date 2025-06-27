@@ -1,0 +1,3 @@
+void avl_init() {
+    
+}

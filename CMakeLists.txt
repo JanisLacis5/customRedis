@@ -8,8 +8,8 @@ add_library(customRedis STATIC
         hashmap.h
         buffer_funcs.cpp
         buffer_funcs.h
-        redis_functions.cpp
-        redis_functions.h
+        avl_tree.cpp
+        avl_tree.h
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}
