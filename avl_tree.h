@@ -12,7 +12,7 @@ struct AVLNode {
     uint32_t size = 0;  // no. of nodes in the tree
 };
 
-void avl_init();
+void avl_init(AVLNode *node);
 AVLNode* avl_insert(AVLNode *root, AVLNode *to_insert, bool (*is_smaller)(AVLNode*, AVLNode*));
 AVLNode* avl_del(AVLNode *root, AVLNode *to_delete, bool (*is_smaller)(AVLNode*, AVLNode*));
 
