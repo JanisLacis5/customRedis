@@ -10,8 +10,9 @@ uint32_t avl_height(AVLNode *node) {
     return 1 + std::max(avl_height(node->left), avl_height(node->right));
 }
 
-static void update_height(AVLNode *node) {
+static void update_node(AVLNode *node) {
     node->height = 1 + std::max(avl_height(node->left), avl_height(node->right));
+    node->size = 1 + avl_size(node->left) + avl_size(node->right);
 }
 
 static AVLNode* rotate_left(AVLNode *curr_root) {
@@ -23,16 +24,16 @@ static AVLNode* rotate_left(AVLNode *curr_root) {
     new_root->left = curr_root;
 
     // Update parent
-    curr_root->parent = new_root;
     new_root->parent = curr_root->parent;
+    curr_root->parent = new_root;
 
     // Update children parents
     if (inner) {
         inner->parent = curr_root;
     }
 
-    update_height(curr_root);
-    update_height(new_root);
+    update_node(curr_root);
+    update_node(new_root);
     return new_root;
 }
 
@@ -45,16 +46,16 @@ static AVLNode* rotate_right(AVLNode *curr_root) {
     new_root->right = curr_root;
 
     // Update parent
-    curr_root->parent = new_root;
     new_root->parent = curr_root->parent;
+    curr_root->parent = new_root;
 
     // Update inner parent
     if (inner) {
         inner->parent = curr_root;
     }
 
-    update_height(curr_root);
-    update_height(new_root);
+    update_node(curr_root);
+    update_node(new_root);
     return new_root;
 }
 
@@ -100,7 +101,7 @@ AVLNode* avl_fix(AVLNode *node) {
 
         uint32_t left = avl_height(node->left);
         uint32_t right = avl_height(node->right);
-        update_height(node);
+        update_node(node);
         if (left == right + 2) {
             if (avl_height(node->left->left) < avl_height(node->left->right)) {
                 node->left = rotate_left(node->left);
@@ -153,5 +154,5 @@ AVLNode* avl_del(AVLNode *to_delete) {
     }
     *from = victim;
 
-    return root;
+    return avl_fix(root);
 }
