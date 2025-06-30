@@ -71,6 +71,21 @@ static Entry* new_entry(std::string &key, uint8_t type) {
     return entry;
 }
 
+static ZSet* find_zset(HMap *hmap, std::string &key) {
+    // Find the zset
+    Lookup l;
+    l.key = key;
+    l.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    HNode *zset_hnode = hm_lookup(hmap, &l.node, &entry_eq);
+    if (!zset_hnode) {
+        printf("ZSet with key %s does not exist\n", key);
+        return NULL;
+    }
+
+    return &container_of(zset_hnode, Entry, zset)->zset;
+}
+
 void do_get(HMap *hmap, std::string &key, Conn *conn) {
     Entry entry;
     entry.key = key;
@@ -157,22 +172,26 @@ void do_zadd(HMap *hmap, std::string &global_key, double &score, std::string &z_
 }
 
 void do_zscore(HMap *hmap, std::string &global_key, std::string &z_key) {
-    // Find the zset
-    Lookup l;
-    l.key = global_key;
-    l.node.hcode = str_hash((uint8_t*)global_key.data(), global_key.size());
-
-    HNode *zset_hnode = hm_lookup(hmap, &l.node, &entry_eq);
-    if (!zset_hnode) {
-        printf("ZSet with key %s does not exist\n", global_key);
+    ZSet *zset = find_zset(hmap, global_key);
+    if (!zset) {
         return;
     }
-
-    ZSet zset = container_of(zset_hnode, Entry, zset)->zset;
-    ZNode *ret = zset_lookup(&zset, z_key);
+    ZNode *ret = zset_lookup(zset, z_key);
     printf("Score for the key %s is %f\n", z_key, ret->score);
 }
 
 void do_zrem(HMap *hmap, std::string &global_key, std::string &z_key) {
+    // Find the zset
+    ZSet *zset = find_zset(hmap, global_key);
+    if (!zset) {
+        return;
+    }
 
+    // Find and delete the node
+    ZNode *znode = zset_lookup(zset, z_key);
+    if (!znode) {
+        printf("Error no1\n");
+        return;
+    }
+    zset_delete(zset, znode);
 }
