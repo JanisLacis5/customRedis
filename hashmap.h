@@ -30,4 +30,4 @@ void hm_clear(HMap *hmap);
 size_t hm_size(HMap *hmap);
 void hm_keys(HMap* hmap, bool (*f)(HNode*, std::vector<std::string> &), std::vector<std::string> &arg);
 
-#endif //HASHMAP_H
+#endif

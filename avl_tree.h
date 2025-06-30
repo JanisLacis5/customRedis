@@ -21,4 +21,4 @@ uint32_t avl_height(AVLNode *node);
 AVLNode* avl_fix(AVLNode *root);
 AVLNode* avl_del(AVLNode *to_delete);
 
-#endif //AVL_TREE_H
+#endif

@@ -9,4 +9,4 @@ void do_set(HMap *hmap, Conn *conn, std::string &key, std::string &value);
 void do_del(HMap *hmap, Conn *conn, std::string &key);
 void do_keys(HMap *hmap, Conn *conn);
 
-#endif //REDIS_FUNCTIONS_H
+#endif

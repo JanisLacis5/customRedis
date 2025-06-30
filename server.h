@@ -18,4 +18,4 @@ struct Conn {
     std::vector<uint8_t> outgoing; // responses
 };
 
-#endif //SERVER_H
+#endif
