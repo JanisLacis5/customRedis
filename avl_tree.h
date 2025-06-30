@@ -19,6 +19,6 @@ inline uint32_t avl_size(AVLNode *node) {
 void avl_init(AVLNode *node);
 uint32_t avl_height(AVLNode *node);
 AVLNode* avl_fix(AVLNode *root);
-AVLNode* avl_del(AVLNode *root, AVLNode *to_delete, bool (*is_smaller)(AVLNode*, AVLNode*));
+AVLNode* avl_del(AVLNode *to_delete);
 
 #endif //AVL_TREE_H
