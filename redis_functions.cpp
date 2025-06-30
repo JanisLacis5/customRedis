@@ -149,6 +149,7 @@ void do_keys(HMap *hmap, Conn *conn) {
     }
 }
 
+// Adds 1 if node was inserted, 0 if node was updated (this key existed in the set already)
 void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std::string &z_key) {
     // Find the zset
     Lookup l;
@@ -168,39 +169,48 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
         }
     }
 
-    zset_insert(&entry->zset, score, z_key);
-    buf_append_u8(conn->outgoing, TAG_NULL);
-
+    int inserted = zset_insert(&entry->zset, score, z_key);
+    buf_append_u8(conn->outgoing, TAG_INT);
+    buf_append_u32(conn->outgoing, inserted); // 1 if inserted else 0
 }
 
+// Adds SCORE if found, NULL if not found, ERROR if set does not exist
 void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     ZSet *zset = find_zset(hmap, global_key);
     if (!zset) {
         buf_append_u8(conn->outgoing, TAG_ERROR);
         return;
     }
+
     ZNode *ret = zset_lookup(zset, z_key);
+    if (!ret) {
+        buf_append_u8(conn->outgoing, TAG_NULL);
+        return;
+    }
 
     buf_append_u8(conn->outgoing,TAG_DOUBLE);
     buf_append_double(conn->outgoing, ret->score);
 }
 
+// Adds 0 if the key or set was not found and not deleted, 1 if key was deleted
 void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     // Find the zset
     ZSet *zset = find_zset(hmap, global_key);
     if (!zset) {
-        buf_append_u8(conn->outgoing, TAG_ERROR);
+        buf_append_u8(conn->outgoing, TAG_INT);
+        buf_append_u32(conn->outgoing, 0);
         return;
     }
 
     // Find and delete the node
     ZNode *znode = zset_lookup(zset, z_key);
     if (!znode) {
-        printf("Error no1\n");
-        buf_append_u8(conn->outgoing, TAG_ERROR);
+        buf_append_u8(conn->outgoing, TAG_INT);
+        buf_append_u32(conn->outgoing, 0);
         return;
     }
 
     zset_delete(zset, znode);
-    buf_append_u8(conn->outgoing, TAG_NULL);
+    buf_append_u8(conn->outgoing, TAG_INT);
+    buf_append_u32(conn->outgoing, 1);
 }
