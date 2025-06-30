@@ -9,13 +9,10 @@
 // member = id for the field in T that ptr points to
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
-struct Entry {
+struct HKey {
     HNode node;
-    std::string key;
-
-    // One of the variants
-    std::string value;
-    ZSet zset;
+    std::string name = NULL;
+    size_t len = 0;
 };
 
 // FNV hash
@@ -27,7 +24,7 @@ static uint64_t str_hash(const uint8_t *data, size_t len) {
     return h;
 }
 
-static bool entry_eq(HNode *lhs, HNode *rhs) {
+static bool hkey_eq(HNode *lhs, HNode *rhs) {
     struct Entry *le = container_of(lhs, struct Entry, node);
     struct Entry *re = container_of(rhs, struct Entry, node);
     return le->key == re->key;
@@ -47,7 +44,7 @@ static ZNode* new_znode(double &score, std::string &key) {
 
 void zdelete(ZSet *zset, ZNode *znode) {
     // Delete from the hashmap
-    hm_delete(&zset->hmap, &znode->h_node, entry_eq);
+    hm_delete(&zset->hmap, &znode->h_node, hkey_eq);
 
     // Delete from the avl tree
     zset->avl_root = avl_del(&znode->avl_node);
@@ -56,7 +53,7 @@ void zdelete(ZSet *zset, ZNode *znode) {
 void zinsert(ZSet *zset, double &score, std::string &key) {
     // Handle existing key
     ZNode *znode = new_znode(score, key);
-    if (hm_lookup(&zset->hmap, &znode->h_node, entry_eq)) {
+    if (hm_lookup(&zset->hmap, &znode->h_node, hkey_eq)) {
         // Delete and insert again
         zdelete(zset, znode);
         zinsert(zset, score, key);
@@ -76,4 +73,19 @@ void zinsert(ZSet *zset, double &score, std::string &key) {
 
     *from = &znode->avl_node;
     zset->avl_root = avl_fix(&znode->avl_node);
+}
+
+ZNode* zlookup(ZSet* zset, std::string& key) {
+    if (!zset->avl_root) {
+        return NULL;
+    }
+
+    HKey hkey;
+    hkey.len = key.size();
+    hkey.name = key;
+    hkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    // Do a hashmap lookup
+    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, hkey_eq);
+    return hnode ? container_of(hnode, ZNode, h_node) : NULL;
 }
