@@ -15,6 +15,7 @@
 #include "hashmap.h"
 #include "server.h"
 #include "redis_functions.h"
+#include "zset.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
@@ -76,18 +77,28 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
     return nstr;
 }
 
-static void out_buffer(Conn *conn, std::vector<std::string> &cmd, const uint32_t &nstr) {
-    if (nstr == 2 && cmd[0] == "get") {
+static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
+    if (cmd.size() == 2 && cmd[0] == "get") {
         do_get(&kv_store.db, cmd[1], conn);
     }
-    else if (nstr == 3 && cmd[0] == "set") {
+    else if (cmd.size() == 3 && cmd[0] == "set") {
         do_set(&kv_store.db, conn, cmd[1], cmd[2]);
     }
-    else if (nstr == 2 && cmd[0] == "del") {
+    else if (cmd.size() == 2 && cmd[0] == "del") {
         do_del(&kv_store.db, conn, cmd[1]);
     }
-    else if (nstr == 1 && cmd[0] == "keys") {
+    else if (cmd.size() == 1 && cmd[0] == "keys") {
         do_keys(&kv_store.db, conn);
+    }
+    else if (cmd.size() == 4 && cmd[0] == "zadd") {
+        double score = std::stod(cmd[2]);
+        do_zadd(&kv_store.db, cmd[1], score, cmd[3]);  // TODO: IMPLEMENT
+    }
+    else if (cmd.size() == 3 && cmd[0] == "zscore") {
+        do_zscore(&kv_store.db, cmd[1], cmd[2]);  // TODO: IMPLEMENT
+    }
+    else if (cmd.size() == 3 && cmd[0] == "zrem") {
+        do_zrem(&kv_store.db, cmd[1], cmd[2]);  // TODO: IMPLEMENT
     }
     else {
         // TODO: add error message
@@ -149,7 +160,7 @@ static bool try_one_req(Conn *conn) {
     before_res_build(conn->outgoing, header_pos);
 
     // Create the output buffer. Each build starts with the status code
-    out_buffer(conn, cmd, nstr);
+    out_buffer(conn, cmd);
 
     // Add the total length and clean up the incoming buffer
     after_res_build(conn->outgoing, header_pos);

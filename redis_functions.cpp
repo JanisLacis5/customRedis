@@ -1,6 +1,7 @@
 #include "buffer_funcs.h"
 #include "hashmap.h"
 #include "server.h"
+#include "zset.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
@@ -18,6 +19,15 @@ enum Tags {
     TAG_NULL = 3,
     TAG_ERROR = 4,
     TAG_DOUBLE = 5
+};
+
+struct Entry {
+    HNode node;
+    std::string key;
+
+    // One of the variants
+    std::string value;
+    ZSet zset;
 };
 
 static bool entry_eq(HNode *lhs, HNode *rhs) {
@@ -41,11 +51,21 @@ static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
     return true;
 }
 
+static Entry* new_entry(std::string &key, std::string *value) {
+    Entry *entry = new Entry();
+    entry->key = key;
+    entry->node.hcode = str_hash((uint8_t*)key.data(), key.size());
+    if (value) {
+        entry->value = *value;
+    }
+    return entry;
+}
+
 void do_get(HMap *hmap, std::string &key, Conn *conn) {
-    Entry entry;
-    entry.key = key;
-    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-    HNode *node = hm_lookup(hmap, &entry.node, entry_eq);
+    Entry *entry = new_entry(key, NULL);
+    entry->key = key;
+    entry->node.hcode = str_hash((uint8_t*)entry->key.data(), entry->key.size());
+    HNode *node = hm_lookup(hmap, &entry->node, entry_eq);
 
     if (!node) {
         conn->outgoing.resize(conn->outgoing.size() - 4); // remove the OK status code
@@ -59,37 +79,39 @@ void do_get(HMap *hmap, std::string &key, Conn *conn) {
         buf_append_u32(conn->outgoing, (uint32_t)val.size());
         buf_append(conn->outgoing, (uint8_t*)val.data(), val.size());
     }
+
+    free(entry);
 }
 
 void do_set(HMap *hmap, Conn *conn, std::string &key, std::string &value) {
-    Entry entry;
-    entry.key = key;
-    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
+    Entry *entry = new_entry(key, NULL);
+    entry->key = key;
+    entry->node.hcode = str_hash((uint8_t*)entry->key.data(), entry->key.size());
 
-    HNode *node = hm_lookup(hmap, &entry.node, entry_eq);
+    HNode *node = hm_lookup(hmap, &entry->node, entry_eq);
     if (node) {
         container_of(node, Entry, node) -> value = value;
     }
     else {
-        Entry *e = new Entry();
-        e->key = entry.key;
-        e->value = value;
-        e->node.hcode = entry.node.hcode;
+        Entry *e = new_entry(key, &value);
         hm_insert(hmap, &e->node);
     }
     buf_append_u8(conn->outgoing, TAG_NULL);
+
+    free(entry);
 }
 
 void do_del(HMap *hmap, Conn *conn, std::string &key) {
-    Entry entry;
-    entry.key = key;
-    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-    HNode *node = hm_delete(hmap, &entry.node, entry_eq);
+    Entry *entry = new_entry(key, NULL);
+    entry->key = key;
+    entry->node.hcode = str_hash((uint8_t*)entry->key.data(), entry->key.size());
+    HNode *node = hm_delete(hmap, &entry->node, entry_eq);
     if (!node) {
         delete container_of(node, Entry, node);
     }
 
     buf_append_u8(conn->outgoing, TAG_NULL);
+    free(entry);
 }
 
 void do_keys(HMap *hmap, Conn *conn) {
@@ -104,4 +126,20 @@ void do_keys(HMap *hmap, Conn *conn) {
         buf_append_u32(conn->outgoing, key.size());
         buf_append(conn->outgoing, (uint8_t*)key.data(), key.size());
     }
+}
+
+void do_zadd(HMap *hmap, std::string &global_key, double &score, std::string &z_key) {
+    // Find zset by key in the hmap
+
+    // Create it if it does not exist
+
+    // Add the {score, name} pair
+}
+
+void do_zscore(HMap *hmap, std::string &global_key, std::string &z_key) {
+
+}
+
+void do_zrem(HMap *hmap, std::string &global_key, std::string &z_key) {
+
 }

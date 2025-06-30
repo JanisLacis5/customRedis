@@ -1,12 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-struct Entry {
-    HNode node;
-    std::string key;
-    std::string value;
-};
-
 struct Conn {
     // fd returned by poll() is non-negative
     int fd = -1;
