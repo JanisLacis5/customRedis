@@ -157,7 +157,20 @@ void do_zadd(HMap *hmap, std::string &global_key, double &score, std::string &z_
 }
 
 void do_zscore(HMap *hmap, std::string &global_key, std::string &z_key) {
-    
+    // Find the zset
+    Lookup l;
+    l.key = global_key;
+    l.node.hcode = str_hash((uint8_t*)global_key.data(), global_key.size());
+
+    HNode *zset_hnode = hm_lookup(hmap, &l.node, &entry_eq);
+    if (!zset_hnode) {
+        printf("ZSet with key %s does not exist\n", global_key);
+        return;
+    }
+
+    ZSet zset = container_of(zset_hnode, Entry, zset)->zset;
+    ZNode *ret = zset_lookup(&zset, z_key);
+    printf("Score for the key %s is %f\n", z_key, ret->score);
 }
 
 void do_zrem(HMap *hmap, std::string &global_key, std::string &z_key) {
