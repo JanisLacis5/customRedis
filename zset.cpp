@@ -1,8 +1,7 @@
-#include "zset.h"
-
 #include <string.h>
 
 #include "redis_functions.h"
+#include "zset.h"
 
 // ptr = pointer to a struct's member
 // T = type of the enclosing struct
@@ -24,10 +23,13 @@ static uint64_t str_hash(const uint8_t *data, size_t len) {
     return h;
 }
 
-static bool hkey_eq(HNode *lhs, HNode *rhs) {
-    struct Entry *le = container_of(lhs, struct Entry, node);
-    struct Entry *re = container_of(rhs, struct Entry, node);
-    return le->key == re->key;
+static bool hcmp(HNode *node, HNode *key) {
+    ZNode *znode = container_of(node, ZNode, h_node);
+    HKey *hkey = container_of(key, HKey, node);
+    if (znode->key_len != hkey->len) {
+        return false;
+    }
+    return memcmp(znode->key, &hkey->name, znode->key_len) == 0;
 }
 
 static ZNode* new_znode(double &score, std::string &key) {
@@ -44,19 +46,19 @@ static ZNode* new_znode(double &score, std::string &key) {
 
 void zdelete(ZSet *zset, ZNode *znode) {
     // Delete from the hashmap
-    hm_delete(&zset->hmap, &znode->h_node, hkey_eq);
+    hm_delete(&zset->hmap, &znode->h_node, hcmp);
 
     // Delete from the avl tree
     zset->avl_root = avl_del(&znode->avl_node);
+    free(znode);
 }
 
 void zinsert(ZSet *zset, double &score, std::string &key) {
     // Handle existing key
     ZNode *znode = new_znode(score, key);
-    if (hm_lookup(&zset->hmap, &znode->h_node, hkey_eq)) {
+    if (hm_lookup(&zset->hmap, &znode->h_node, hcmp)) {
         // Delete and insert again
         zdelete(zset, znode);
-        zinsert(zset, score, key);
     }
 
     // Insert in the hashmap
@@ -86,6 +88,6 @@ ZNode* zlookup(ZSet* zset, std::string& key) {
     hkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     // Do a hashmap lookup
-    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, hkey_eq);
+    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, hcmp);
     return hnode ? container_of(hnode, ZNode, h_node) : NULL;
 }
