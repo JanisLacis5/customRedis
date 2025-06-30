@@ -10,7 +10,7 @@
 
 struct HKey {
     HNode node;
-    std::string name = NULL;
+    std::string name;
     size_t len = 0;
 };
 
@@ -29,7 +29,7 @@ static bool hcmp(HNode *node, HNode *key) {
     if (znode->key_len != hkey->len) {
         return false;
     }
-    return memcmp(znode->key, &hkey->name, znode->key_len) == 0;
+    return memcmp(znode->key, hkey->name.data(), znode->key_len) == 0;
 }
 
 static ZNode* new_znode(double &score, std::string &key) {
@@ -44,7 +44,32 @@ static ZNode* new_znode(double &score, std::string &key) {
     return znode;
 }
 
-void zdelete(ZSet *zset, ZNode *znode) {
+static void del_avl_tree(AVLNode *node) {
+    if (!node) {
+        return;
+    }
+
+    ZNode *n = container_of(node, ZNode, avl_node);
+
+    del_avl_tree(node->left);
+    del_avl_tree(node->right);
+
+    free(n);
+}
+
+// true if the node is smaller than the {score, key} tuple
+static bool zless(ZNode *node, double &score, std::string &key) {
+    if (score != node->score) {
+        return node->score < score;
+    }
+    int ret = memcmp(node->key, key.data(), std::min(key.size(), node->key_len));
+    if (ret != 0) {
+        return ret < 0;
+    }
+    return node->key_len < key.size();
+}
+
+void zset_delete(ZSet *zset, ZNode *znode) {
     // Delete from the hashmap
     hm_delete(&zset->hmap, &znode->h_node, hcmp);
 
@@ -53,13 +78,18 @@ void zdelete(ZSet *zset, ZNode *znode) {
     free(znode);
 }
 
-void zinsert(ZSet *zset, double &score, std::string &key) {
-    // Handle existing key
-    ZNode *znode = new_znode(score, key);
-    if (hm_lookup(&zset->hmap, &znode->h_node, hcmp)) {
+// true if insert, false if update
+bool zset_insert(ZSet *zset, double &score, std::string &key) {
+    bool is_insert = true;
+    ZNode *node = zset_lookup(zset, key);
+    if (node) {
         // Delete and insert again
-        zdelete(zset, znode);
+        zset_delete(zset, node);
+        is_insert = false; // not an insert - this is an update
     }
+
+    // Create the new node
+    ZNode *znode = new_znode(score, key);
 
     // Insert in the hashmap
     hm_insert(&zset->hmap, &znode->h_node);
@@ -69,19 +99,18 @@ void zinsert(ZSet *zset, double &score, std::string &key) {
     AVLNode *curr = NULL;
     while (*from) {
         curr = *from;
-        double val = container_of(curr, ZNode, avl_node)->score;
-        from = val > score ? &curr->left : &curr->right;
+        ZNode *node = container_of(curr, ZNode, avl_node);
+        from = zless(node, score, key) ? &curr->left : &curr->right;
     }
 
     *from = &znode->avl_node;
+    znode->avl_node.parent = curr;
     zset->avl_root = avl_fix(&znode->avl_node);
+
+    return is_insert;
 }
 
-ZNode* zlookup(ZSet* zset, std::string& key) {
-    if (!zset->avl_root) {
-        return NULL;
-    }
-
+ZNode* zset_lookup(ZSet* zset, std::string& key) {
     HKey hkey;
     hkey.len = key.size();
     hkey.name = key;
@@ -91,3 +120,10 @@ ZNode* zlookup(ZSet* zset, std::string& key) {
     HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, hcmp);
     return hnode ? container_of(hnode, ZNode, h_node) : NULL;
 }
+
+void zset_clear(ZSet* zset) {
+    hm_clear(&zset->hmap);
+    del_avl_tree(zset->avl_root);
+    zset->avl_root = NULL;
+}
+
