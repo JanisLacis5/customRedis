@@ -1,3 +1,4 @@
 - poll() to epoll() for the readiness api
 - AVL tree -> skip list for the sorted set
 - add error messages where TAG_ERROR is added to the output buffer
+- create range queries for zset
