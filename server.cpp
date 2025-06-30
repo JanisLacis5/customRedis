@@ -92,13 +92,13 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     }
     else if (cmd.size() == 4 && cmd[0] == "zadd") {
         double score = std::stod(cmd[2]);
-        do_zadd(&kv_store.db, cmd[1], score, cmd[3]);  // TODO: IMPLEMENT
+        do_zadd(&kv_store.db, conn, cmd[1], score, cmd[3]);
     }
     else if (cmd.size() == 3 && cmd[0] == "zscore") {
-        do_zscore(&kv_store.db, cmd[1], cmd[2]);  // TODO: IMPLEMENT
+        do_zscore(&kv_store.db, conn, cmd[1], cmd[2]);
     }
     else if (cmd.size() == 3 && cmd[0] == "zrem") {
-        do_zrem(&kv_store.db, cmd[1], cmd[2]);  // TODO: IMPLEMENT
+        do_zrem(&kv_store.db, conn, cmd[1], cmd[2]);
     }
     else {
         // TODO: add error message

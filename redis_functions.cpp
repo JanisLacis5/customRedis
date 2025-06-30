@@ -149,7 +149,7 @@ void do_keys(HMap *hmap, Conn *conn) {
     }
 }
 
-void do_zadd(HMap *hmap, std::string &global_key, double &score, std::string &z_key) {
+void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std::string &z_key) {
     // Find the zset
     Lookup l;
     l.node.hcode = str_hash((uint8_t*)global_key.data(), global_key.size());
@@ -163,27 +163,33 @@ void do_zadd(HMap *hmap, std::string &global_key, double &score, std::string &z_
     else {
         entry = container_of(node, Entry, node);
         if (entry->type != T_ZSET) {
-            printf("Expected type zset\n");
+            buf_append_u8(conn->outgoing, TAG_ERROR);
             return;
         }
     }
 
     zset_insert(&entry->zset, score, z_key);
+    buf_append_u8(conn->outgoing, TAG_NULL);
+
 }
 
-void do_zscore(HMap *hmap, std::string &global_key, std::string &z_key) {
+void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     ZSet *zset = find_zset(hmap, global_key);
     if (!zset) {
+        buf_append_u8(conn->outgoing, TAG_ERROR);
         return;
     }
     ZNode *ret = zset_lookup(zset, z_key);
-    printf("Score for the key %s is %f\n", z_key, ret->score);
+
+    buf_append_u8(conn->outgoing,TAG_DOUBLE);
+    buf_append_double(conn->outgoing, ret->score);
 }
 
-void do_zrem(HMap *hmap, std::string &global_key, std::string &z_key) {
+void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     // Find the zset
     ZSet *zset = find_zset(hmap, global_key);
     if (!zset) {
+        buf_append_u8(conn->outgoing, TAG_ERROR);
         return;
     }
 
@@ -191,7 +197,10 @@ void do_zrem(HMap *hmap, std::string &global_key, std::string &z_key) {
     ZNode *znode = zset_lookup(zset, z_key);
     if (!znode) {
         printf("Error no1\n");
+        buf_append_u8(conn->outgoing, TAG_ERROR);
         return;
     }
+
     zset_delete(zset, znode);
+    buf_append_u8(conn->outgoing, TAG_NULL);
 }

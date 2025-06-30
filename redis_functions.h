@@ -11,8 +11,8 @@ void do_del(HMap *hmap, Conn *conn, std::string &key);
 void do_keys(HMap *hmap, Conn *conn);
 
 // Sorted set functions
-void do_zadd(HMap *hmap, std::string &key, double &score, std::string &name);
-void do_zscore(HMap *hmap, std::string &key, std::string &name);
-void do_zrem(HMap *hmap, std::string &key, std::string &name);
+void do_zadd(HMap *hmap, Conn *conn, std::string &key, double &score, std::string &name);
+void do_zscore(HMap *hmap, Conn *conn, std::string &key, std::string &name);
+void do_zrem(HMap *hmap, Conn *conn, std::string &key, std::string &name);
 
 #endif
