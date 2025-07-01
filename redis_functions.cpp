@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "buffer_funcs.h"
 #include "hashmap.h"
 #include "server.h"
@@ -86,6 +88,45 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
     return &container_of(zset_hnode, Entry, zset)->zset;
 }
 
+static void out_err(Conn *conn) {
+    buf_rem_last_res_code(conn->outgoing);
+    buf_append_u32(conn->outgoing, RES_ERR);
+    buf_append_u8(conn->outgoing, TAG_NULL);
+}
+
+static void out_arr(Conn *conn, uint32_t len) {
+    buf_append_u8(conn->outgoing, TAG_ARR);
+    buf_append_u32(conn->outgoing, len);
+}
+
+static void out_int(Conn *conn, uint32_t nr) {
+    buf_append_u8(conn->outgoing, TAG_INT);
+    buf_append_u32(conn->outgoing, nr);
+}
+
+static void out_double(Conn *conn, double dbl) {
+    buf_append_u8(conn->outgoing, TAG_DOUBLE);
+    buf_append_double(conn->outgoing, dbl);
+}
+
+static void out_str(Conn *conn, char *str, uint32_t size) {
+    buf_append_u8(conn->outgoing, TAG_STR);
+    buf_append_u32(conn->outgoing, size);
+    buf_append(conn->outgoing, (uint8_t*)str,size);
+}
+
+static void out_not_found(Conn *conn) {
+    buf_rem_last_res_code(conn->outgoing);
+    buf_append_u32(conn->outgoing, RES_NX);
+    buf_append_u8(conn->outgoing, TAG_NULL);
+}
+
+static size_t out_unknown_arr(Conn *conn) {
+    buf_append_u8(conn->outgoing, TAG_ARR);
+    buf_append_u32(conn->outgoing, 0); // to be updated
+    return conn->outgoing.size() - 4;
+}
+
 void do_get(HMap *hmap, std::string &key, Conn *conn) {
     Entry entry;
     entry.key = key;
@@ -93,16 +134,11 @@ void do_get(HMap *hmap, std::string &key, Conn *conn) {
     HNode *node = hm_lookup(hmap, &entry.node, entry_eq);
 
     if (!node) {
-        conn->outgoing.resize(conn->outgoing.size() - 4); // remove the OK status code
-        buf_append_u32(conn->outgoing, RES_NX);
-        buf_append_u8(conn->outgoing, TAG_NULL);
+        out_not_found(conn);
     }
     else {
         std::string &val = container_of(node, Entry, node)->value;
-
-        buf_append_u8(conn->outgoing, TAG_STR);
-        buf_append_u32(conn->outgoing, (uint32_t)val.size());
-        buf_append(conn->outgoing, (uint8_t*)val.data(), val.size());
+        out_str(conn, val.data(), val.size());
     }
 }
 
@@ -136,16 +172,12 @@ void do_del(HMap *hmap, Conn *conn, std::string &key) {
 }
 
 void do_keys(HMap *hmap, Conn *conn) {
-    buf_append_u8(conn->outgoing, TAG_ARR);
-
     std::vector<std::string> keys;
     hm_keys(hmap, &hm_keys_cb, keys);
 
-    buf_append_u32(conn->outgoing, keys.size());
+    out_arr(conn, keys.size());
     for (std::string &key: keys) {
-        buf_append_u8(conn->outgoing, TAG_STR);
-        buf_append_u32(conn->outgoing, key.size());
-        buf_append(conn->outgoing, (uint8_t*)key.data(), key.size());
+        out_str(conn, key.data(), key.size());
     }
 }
 
@@ -164,7 +196,7 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
     else {
         entry = container_of(node, Entry, node);
         if (entry->type != T_ZSET) {
-            buf_append_u8(conn->outgoing, TAG_ERROR);
+            out_err(conn);
             return;
         }
     }
@@ -178,7 +210,7 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
 void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     ZSet *zset = find_zset(hmap, global_key);
     if (!zset) {
-        buf_append_u8(conn->outgoing, TAG_ERROR);
+        out_err(conn);
         return;
     }
 
@@ -188,8 +220,7 @@ void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_k
         return;
     }
 
-    buf_append_u8(conn->outgoing,TAG_DOUBLE);
-    buf_append_double(conn->outgoing, ret->score);
+    out_double(conn, ret->score);
 }
 
 // Adds 0 if the key or set was not found and not deleted, 1 if key was deleted
@@ -197,22 +228,19 @@ void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key
     // Find the zset
     ZSet *zset = find_zset(hmap, global_key);
     if (!zset) {
-        buf_append_u8(conn->outgoing, TAG_INT);
-        buf_append_u32(conn->outgoing, 0);
+        out_int(conn, 0);
         return;
     }
 
     // Find and delete the node
     ZNode *znode = zset_lookup(zset, z_key);
     if (!znode) {
-        buf_append_u8(conn->outgoing, TAG_INT);
-        buf_append_u32(conn->outgoing, 0);
+        out_int(conn, 0);
         return;
     }
 
     zset_delete(zset, znode);
-    buf_append_u8(conn->outgoing, TAG_INT);
-    buf_append_u32(conn->outgoing, 1);
+    out_int(conn, 1);
 }
 
 /*
@@ -233,7 +261,36 @@ void do_zrangequery(
     uint32_t offset = 0,
     uint32_t limit = UINT32_MAX
 ) {
+    ZSet *zset = find_zset(hmap, global_key);
+    if (!zset) {
+        out_err(conn);
+        return;
+    }
 
+    // Find the first node that is in range
+    ZNode *lb = zset_lower_bound(zset, score_lb, key_lb);
+    if (!lb) {
+        out_arr(conn, 0);
+        return;
+    }
+
+    // Get the first node to return (offset)
+    ZNode *znode = zset_offset(lb, offset);
+
+    // Add array tag with unknown len to out buffer
+    size_t size_pos = out_unknown_arr(conn);
+
+    // Return the next LIMIT nodes
+    uint32_t size = 0;
+    while (znode && size < limit) {
+        out_double(conn, znode->score);
+        out_str(conn, znode->key, znode->key_len);
+        znode = zset_offset(znode, 1);
+        size += 2;
+    }
+
+    // Add size
+    memcpy(&conn->outgoing, &size, 4);
 }
 
 

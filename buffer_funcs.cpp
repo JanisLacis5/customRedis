@@ -20,3 +20,7 @@ void buf_append_u32(std::vector<uint8_t> &buf, uint32_t data) {
 void buf_append_double(std::vector<uint8_t> &buf, double data) {
     buf_append(buf, (uint8_t*)&data, 8);
 }
+
+void buf_rem_last_res_code(std::vector<uint8_t> &buf) {
+    buf.resize(buf.size() - 4);
+}
