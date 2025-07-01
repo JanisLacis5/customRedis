@@ -47,7 +47,6 @@ static int write_all(int fd, uint8_t *buf, size_t n) {
 
 static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len) {
     if (curr >= 4 + total_len) {
-        printf("\n");
         return;
     }
 
@@ -61,7 +60,7 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
         memcpy(&arr_size, &buf[curr], 4);
         curr += 4;
 
-        printf("Array of %d elements:\n", arr_size);
+        printf("(arr) len=%d\n", arr_size);
     }
     else if (tag == TAG_STR) {
         // Read the size
@@ -75,7 +74,7 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
         memcpy(str.data(), &buf[curr], str_size);
         curr += str_size;
 
-        printf("%s ", str.data());
+        printf("(str) %s\n", str.data());
     }
     else if (tag == TAG_DOUBLE) {
         // Read the double
@@ -84,7 +83,7 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
         curr += 8;
 
         // Print it
-        printf("%f ", data);
+        printf("(double) %f\n", data);
     }
     else if (tag == TAG_INT) {
         // Read the int
@@ -92,7 +91,10 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
         memcpy(&data, &buf[curr], 4);
         curr += 4;
 
-        printf("%d ", data);
+        printf("(int) %d\n", data);
+    }
+    else if (tag == TAG_NULL) {
+        printf("(null)\n");
     }
     else if (tag == TAG_ERROR) {
         // TODO: print the error message when it is implemented
@@ -121,7 +123,13 @@ static int handle_read(int fd) {
         return -1;
     }
 
-    size_t curr = 4;
+    // Read response code
+    // Skip the total_len + arr_tag(TAG_ARR) + arr_len(2) + response_type_tag(int)
+    size_t curr = 4 + 1 + 4 + 1;
+    uint32_t res_code = 0;
+    memcpy(&res_code, &buf[curr], 4);
+    curr += 4;
+
     print_res(buf, curr, total_len);
     return 0;
 }
@@ -163,13 +171,10 @@ static int handle_write(int fd, std::vector<std::string> &query) {
 
 int main(int argc, char **argv) {
     // Create the socket
-    printf("[client]: Creating client socket...\n");
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
-        printf("[client]: Socket creation failed\n");
         return 1;
     }
-    printf("[client]: Socket created!\n");
 
     // connect to the socket
     struct sockaddr_in addr = {};
@@ -181,14 +186,11 @@ int main(int argc, char **argv) {
         printf("[client]: Connection failed\n");
         return 1;
     }
-    printf("[client]: Connection successful!\n");
 
     std::vector<std::string> cmd;
     for (int i = 1; i < argc; i++) {
-        printf("%s ", argv[i]);
         cmd.push_back(argv[i]);
     }
-    printf("\n");
     int err = handle_write(fd, cmd);
     if (err) {
         close(fd);

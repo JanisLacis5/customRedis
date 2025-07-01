@@ -147,16 +147,16 @@ ZNode* zset_lower_bound(ZSet *zset, double score, std::string &key) {
     return lb ? container_of(lb, ZNode, avl_node) : NULL;
 }
 
-ZNode* zset_offset(ZNode *znode, uint32_t offset) {
+ZNode* zset_offset(ZNode *znode, int32_t offset) {
     AVLNode *node = &znode->avl_node;
     int32_t rank = 0;
     while (rank != offset) {
-        if (rank > offset && rank - avl_size(node->left) <= offset) {
+        if (rank > offset && rank - (int32_t)avl_size(node->left) <= offset) {
             // node is in the left
             node = node->left;
             rank -= (1 + avl_size(node->right));
         }
-        else if (rank < offset && rank + avl_size(node->right) >= offset) {
+        else if (rank < offset && rank + (int32_t)avl_size(node->right) >= offset) {
             // node is in the right
             node = node->right;
             rank += (1 + avl_size(node->left));

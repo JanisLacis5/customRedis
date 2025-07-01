@@ -43,10 +43,10 @@ struct Lookup {
     std::string key;
 };
 
-static bool entry_eq(HNode *lhs, HNode *rhs) {
-    struct Entry *le = container_of(lhs, struct Entry, node);
-    struct Entry *re = container_of(rhs, struct Entry, node);
-    return le->key == re->key;
+static bool entry_eq(HNode *node, HNode *key) {
+    Entry *ent = container_of(node, Entry, node);
+    Lookup *keydata = container_of(key, Lookup, node);
+    return ent->key == keydata->key;
 }
 
 // FNV hash
@@ -62,30 +62,6 @@ static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
     std::string key = container_of(node, Entry, node)->value;
     keys.push_back(key);
     return true;
-}
-
-static Entry* new_entry(std::string &key, uint8_t type) {
-    Entry *entry = new Entry();
-    entry->key = key;
-    entry->type = type;
-    entry->node.hcode = str_hash((uint8_t*)key.data(), key.size());
-
-    return entry;
-}
-
-static ZSet* find_zset(HMap *hmap, std::string &key) {
-    // Find the zset
-    Lookup l;
-    l.key = key;
-    l.node.hcode = str_hash((uint8_t*)key.data(), key.size());
-
-    HNode *zset_hnode = hm_lookup(hmap, &l.node, &entry_eq);
-    if (!zset_hnode) {
-        printf("ZSet with key %s does not exist\n", key);
-        return NULL;
-    }
-
-    return &container_of(zset_hnode, Entry, zset)->zset;
 }
 
 static void out_err(Conn *conn) {
@@ -125,6 +101,31 @@ static size_t out_unknown_arr(Conn *conn) {
     buf_append_u8(conn->outgoing, TAG_ARR);
     buf_append_u32(conn->outgoing, 0); // to be updated
     return conn->outgoing.size() - 4;
+}
+
+static Entry* new_entry(std::string &key, uint8_t type) {
+    Entry *entry = new Entry();
+    entry->key = key;
+    entry->type = type;
+    entry->node.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    return entry;
+}
+
+static ZSet* find_zset(HMap *hmap, std::string &key) {
+    // Find the zset
+    Lookup l;
+    l.key = key;
+    l.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    HNode *zset_hnode = hm_lookup(hmap, &l.node, &entry_eq);
+    if (!zset_hnode) {
+        printf("ZSet with key %s does not exist\n", key.data());
+        return NULL;
+    }
+
+    Entry *entry = container_of(zset_hnode, Entry, zset);
+    return (entry && entry->type != T_ZSET) ? &entry->zset : NULL;
 }
 
 void do_get(HMap *hmap, std::string &key, Conn *conn) {
@@ -191,9 +192,11 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
 
     Entry *entry = NULL;
     if (!node) {
+        printf("new\n");
         entry = new_entry(global_key, T_ZSET);
     }
     else {
+        printf("exists\n");
         entry = container_of(node, Entry, node);
         if (entry->type != T_ZSET) {
             out_err(conn);
@@ -202,8 +205,7 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
     }
 
     int inserted = zset_insert(&entry->zset, score, z_key);
-    buf_append_u8(conn->outgoing, TAG_INT);
-    buf_append_u32(conn->outgoing, inserted); // 1 if inserted else 0
+    out_int(conn, inserted);  // 1 if inserted else 0
 }
 
 // Adds SCORE if found, NULL if not found, ERROR if set does not exist
@@ -258,7 +260,7 @@ void do_zrangequery(
     std::string &global_key,
     double score_lb,
     std::string &key_lb,
-    uint32_t offset = 0,
+    int32_t offset = 0,
     uint32_t limit = UINT32_MAX
 ) {
     ZSet *zset = find_zset(hmap, global_key);
@@ -290,7 +292,7 @@ void do_zrangequery(
     }
 
     // Add size
-    memcpy(&conn->outgoing, &size, 4);
+    memcpy(&conn->outgoing[size_pos], &size, 4);
 }
 
 

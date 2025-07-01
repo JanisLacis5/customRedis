@@ -16,6 +16,7 @@
 #include "server.h"
 #include "redis_functions.h"
 #include "zset.h"
+#include "avl_tree.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
@@ -146,7 +147,7 @@ static bool try_one_req(Conn *conn) {
 
     // Parse the query
     std::vector<std::string> cmd;
-    size_t nstr = parse_cmd(&conn->incoming[4], cmd);
+    parse_cmd(&conn->incoming[4], cmd);
 
     // Log the query
     printf("[server]: Token from the client: ");
