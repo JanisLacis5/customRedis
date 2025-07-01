@@ -31,7 +31,7 @@ enum EntryTypes {
 struct Entry {
     HNode node;
     std::string key;
-    uint8_t type;
+    uint32_t type;
 
     // One of the variants
     std::string value;
@@ -103,7 +103,7 @@ static size_t out_unknown_arr(Conn *conn) {
     return conn->outgoing.size() - 4;
 }
 
-static Entry* new_entry(std::string &key, uint8_t type) {
+static Entry* new_entry(std::string &key, uint32_t type) {
     Entry *entry = new Entry();
     entry->key = key;
     entry->type = type;
@@ -192,11 +192,10 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
 
     Entry *entry = NULL;
     if (!node) {
-        printf("new\n");
         entry = new_entry(global_key, T_ZSET);
+        hm_insert(hmap, &entry->node);
     }
     else {
-        printf("exists\n");
         entry = container_of(node, Entry, node);
         if (entry->type != T_ZSET) {
             out_err(conn);
