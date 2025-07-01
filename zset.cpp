@@ -32,7 +32,7 @@ static bool hcmp(HNode *node, HNode *key) {
     return memcmp(znode->key, hkey->name.data(), znode->key_len) == 0;
 }
 
-static ZNode* new_znode(double &score, std::string &key) {
+static ZNode* new_znode(double score, std::string &key) {
     ZNode *znode = (ZNode*)malloc(sizeof(ZNode) + key.size());
     avl_init(&znode->avl_node);
     znode->h_node.next = NULL;
@@ -58,7 +58,7 @@ static void del_avl_tree(AVLNode *node) {
 }
 
 // true if the node is smaller than the {score, key} tuple
-static bool zless(ZNode *node, double &score, std::string &key) {
+static bool zless(ZNode *node, double score, std::string &key) {
     if (score != node->score) {
         return node->score < score;
     }
@@ -79,7 +79,7 @@ void zset_delete(ZSet *zset, ZNode *znode) {
 }
 
 // true if insert, false if update
-bool zset_insert(ZSet *zset, double &score, std::string &key) {
+bool zset_insert(ZSet *zset, double score, std::string &key) {
     bool is_insert = true;
     ZNode *node = zset_lookup(zset, key);
     if (node) {
@@ -126,4 +126,59 @@ void zset_clear(ZSet* zset) {
     del_avl_tree(zset->avl_root);
     zset->avl_root = NULL;
 }
+
+ZNode* zset_lower_bound(ZSet *zset, double score, std::string &key) {
+    AVLNode **from = &zset->avl_root;
+    AVLNode *curr = NULL;
+    AVLNode *lb = NULL;
+
+    while (*from) {
+        curr = *from;
+        ZNode *node = container_of(curr, ZNode, avl_node);
+        if (zless(node, score, key)) {
+            from = &curr->right;
+        }
+        else {
+            lb = curr;
+            from = &curr->left;
+        }
+    }
+
+    return lb ? container_of(lb, ZNode, avl_node) : NULL;
+}
+
+ZNode* zset_offset(ZNode *znode, uint32_t offset) {
+    AVLNode *node = &znode->avl_node;
+    int32_t rank = 0;
+    while (rank != offset) {
+        if (rank > offset && rank - avl_size(node->left) <= offset) {
+            // node is in the left
+            node = node->left;
+            rank -= (1 + avl_size(node->right));
+        }
+        else if (rank < offset && rank + avl_size(node->right) >= offset) {
+            // node is in the right
+            node = node->right;
+            rank += (1 + avl_size(node->left));
+        }
+        else {
+            // parent
+            AVLNode *parent = node->parent;
+            if (!parent) {
+                return NULL;
+            }
+            if (parent->left == node) {
+                rank += (1 + avl_size(node->right));
+            }
+            else {
+                rank -= (1 + avl_size(node->left));
+            }
+            node = parent;
+        }
+    }
+
+    return node ? container_of(node, ZNode, avl_node) : NULL;
+}
+
+
 

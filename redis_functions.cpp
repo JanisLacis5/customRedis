@@ -214,3 +214,52 @@ void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key
     buf_append_u8(conn->outgoing, TAG_INT);
     buf_append_u32(conn->outgoing, 1);
 }
+
+/*
+ *  HMap *hmap - global hashmap
+ *  Conn *conn - connection between server and client
+ *  std::string &global_key - key to zset in the global hashmap
+ *  double score_lb - lower bound for score
+ *  std::string &key_lb - lower bound for key
+ *  uint32_t offset - how many qualifying tuples to skip before starting to return results
+ *  uint32_t limit - the maximum number of pairs to return after applying the offset
+ */
+void do_zrangequery(
+    HMap *hmap,
+    Conn *conn,
+    std::string &global_key,
+    double score_lb,
+    std::string &key_lb,
+    uint32_t offset = 0,
+    uint32_t limit = UINT32_MAX
+) {
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

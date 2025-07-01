@@ -18,9 +18,11 @@ struct ZNode {
     char key[0];
 };
 
-bool zset_insert(ZSet *zset, double &score, std::string &key);
+bool zset_insert(ZSet *zset, double score, std::string &key);
 ZNode* zset_lookup(ZSet *zset, std::string &key);
 void zset_delete(ZSet *zset, ZNode *znode);
 void zset_clear(ZSet *zset);
+ZNode* zset_lower_bound(ZSet *zset, double score, std::string &key);
+ZNode* zset_offset(ZNode *znode, uint32_t offset);
 
 #endif
