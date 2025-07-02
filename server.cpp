@@ -101,6 +101,20 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     else if (cmd.size() == 3 && cmd[0] == "zrem") {
         do_zrem(&kv_store.db, conn, cmd[1], cmd[2]);
     }
+    else if (cmd[0] == "zquery") {
+        double score = std::stod(cmd[2]);
+        int32_t offset = std::stoi(cmd[4]);
+        uint32_t limit = std::stoi(cmd[5]);
+        do_zrangequery(
+            &kv_store.db,
+            conn,
+            cmd[1],
+            score,
+            cmd[3],
+            offset,
+            limit
+        );
+    }
     else {
         // TODO: add error message
         buf_append_u32(conn->outgoing, RES_ERR);
