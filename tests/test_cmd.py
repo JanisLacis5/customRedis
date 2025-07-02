@@ -65,7 +65,7 @@ for cmd, out in zip(cmds, outputs[1:]):
     cmd_out = subprocess.run(cmd, capture_output=True)
 
     try:
-        assert cmd_out.stdout.decode('utf-8').strip() == out
+        assert cmd_out.stdout.decode('utf-8').strip() == out.strip()
     except AssertionError:
         print(cmd)
         print(f"output:\n{cmd_out.stdout.decode('utf-8').strip()}\n")

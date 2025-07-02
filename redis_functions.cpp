@@ -2,26 +2,10 @@
 
 #include "buffer_funcs.h"
 #include "hashmap.h"
-#include "server.h"
 #include "zset.h"
+#include "out_helpers.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
-
-// Response status codes
-enum ResponseStatusCodes {
-    RES_OK = 0,
-    RES_ERR = 1,    // error
-    RES_NX = 2,     // key not found
-};
-
-enum Tags {
-    TAG_INT = 0,
-    TAG_STR = 1,
-    TAG_ARR = 2,
-    TAG_NULL = 3,
-    TAG_ERROR = 4,
-    TAG_DOUBLE = 5
-};
 
 enum EntryTypes {
     T_STR = 0,
@@ -62,45 +46,6 @@ static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
     std::string key = container_of(node, Entry, node)->key;
     keys.push_back(key);
     return true;
-}
-
-static void out_err(Conn *conn) {
-    buf_rem_last_res_code(conn->outgoing);
-    buf_append_u32(conn->outgoing, RES_ERR);
-    buf_append_u8(conn->outgoing, TAG_NULL);
-}
-
-static void out_arr(Conn *conn, uint32_t len) {
-    buf_append_u8(conn->outgoing, TAG_ARR);
-    buf_append_u32(conn->outgoing, len);
-}
-
-static void out_int(Conn *conn, uint32_t nr) {
-    buf_append_u8(conn->outgoing, TAG_INT);
-    buf_append_u32(conn->outgoing, nr);
-}
-
-static void out_double(Conn *conn, double dbl) {
-    buf_append_u8(conn->outgoing, TAG_DOUBLE);
-    buf_append_double(conn->outgoing, dbl);
-}
-
-static void out_str(Conn *conn, char *str, uint32_t size) {
-    buf_append_u8(conn->outgoing, TAG_STR);
-    buf_append_u32(conn->outgoing, size);
-    buf_append(conn->outgoing, (uint8_t*)str,size);
-}
-
-static void out_not_found(Conn *conn) {
-    buf_rem_last_res_code(conn->outgoing);
-    buf_append_u32(conn->outgoing, RES_NX);
-    buf_append_u8(conn->outgoing, TAG_NULL);
-}
-
-static size_t out_unknown_arr(Conn *conn) {
-    buf_append_u8(conn->outgoing, TAG_ARR);
-    buf_append_u32(conn->outgoing, 0); // to be updated
-    return conn->outgoing.size() - 4;
 }
 
 static Entry* new_entry(std::string &key, uint32_t type) {
@@ -150,7 +95,11 @@ void do_set(HMap *hmap, Conn *conn, std::string &key, std::string &value) {
 
     HNode *node = hm_lookup(hmap, &entry.node, &entry_eq);
     if (node) {
-        container_of(node, Entry, node) -> value = value;
+        Entry *entry = container_of(node, Entry, node);
+        if (entry->type == T_ZSET) {
+            return out_err(conn, "cant add string value to zset node");
+        }
+        entry->value = value;
     }
     else {
         Entry *e = new_entry(key, T_STR);
@@ -202,7 +151,7 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
     else {
         entry = container_of(node, Entry, node);
         if (entry->type != T_ZSET) {
-            out_err(conn);
+            out_err(conn, "cant add zset to node that has a string value");
             return;
         }
     }

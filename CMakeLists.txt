@@ -15,6 +15,8 @@ add_library(customRedis STATIC
     server.h
     zset.cpp
     zset.h
+    out_helpers.cpp
+    out_helpers.h
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}
