@@ -123,6 +123,9 @@ size_t hm_size(HMap* hmap) {
 
 bool h_foreach(HTab *htab, bool (*f)(HNode*, std::vector<std::string> &), std::vector<std::string> &arg) {
     for (size_t i = 0; i <= htab->mask; i++) {
+        if (!htab->tab) {
+            continue;
+        }
         HNode *curr = htab->tab[i];
         while (curr) {
             if (!f(curr, arg)) {

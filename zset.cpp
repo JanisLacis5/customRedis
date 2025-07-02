@@ -33,7 +33,7 @@ static bool hcmp(HNode *node, HNode *key) {
 }
 
 static ZNode* new_znode(double score, std::string &key) {
-    ZNode *znode = (ZNode*)malloc(sizeof(ZNode) + key.size() + 1);
+    ZNode *znode = (ZNode*)malloc(sizeof(ZNode) + key.size());
     avl_init(&znode->avl_node);
     znode->h_node.next = NULL;
     znode->h_node.hcode = str_hash((uint8_t*)key.data(), key.size());
@@ -70,7 +70,7 @@ static bool zless(ZNode *node, double score, std::string &key) {
 }
 
 void zset_delete(ZSet *zset, ZNode *znode) {
-    // Delete from the hashmap
+    // Delete from the hashmap and the tree
     HKey hkey;
     hkey.name = znode->key;
     hkey.len = znode->key_len;

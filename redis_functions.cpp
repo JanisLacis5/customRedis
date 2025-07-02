@@ -59,7 +59,7 @@ static uint64_t str_hash(const uint8_t *data, size_t len) {
 }
 
 static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
-    std::string key = container_of(node, Entry, node)->value;
+    std::string key = container_of(node, Entry, node)->key;
     keys.push_back(key);
     return true;
 }
@@ -133,6 +133,7 @@ void do_get(HMap *hmap, std::string &key, Conn *conn) {
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
     HNode *node = hm_lookup(hmap, &entry.node, entry_eq);
+    printf("keys: %d\n", hmap->newer.size);
 
     if (!node) {
         out_not_found(conn);
@@ -181,6 +182,7 @@ void do_keys(HMap *hmap, Conn *conn) {
 
     out_arr(conn, keys.size());
     for (std::string &key: keys) {
+        printf("%s\n", key.data());
         out_str(conn, key.data(), key.size());
     }
 }
@@ -213,13 +215,16 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
 // Adds SCORE if found, NULL if not found, ERROR if set does not exist
 void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     ZSet *zset = find_zset(hmap, global_key);
+    printf("root exists: %p\n", (void*)zset->avl_root);
+    printf("hmap size: %d\n", zset->hmap.newer.size);
+    printf("global key: %s\n", global_key.data());
+    printf("zset key: %s\n", z_key.data());
 
     ZNode *ret = zset_lookup(zset, z_key);
     if (!ret) {
         buf_append_u8(conn->outgoing, TAG_NULL);
         return;
     }
-
     out_double(conn, ret->score);
 }
 
