@@ -31,7 +31,7 @@ enum EntryTypes {
 struct Entry {
     HNode node;
     std::string key;
-    uint32_t type;
+    uint32_t type = 2;
 
     // One of the variants
     std::string value;
@@ -124,8 +124,8 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
         return (ZSet*)&empty;
     }
 
-    Entry *entry = container_of(zset_hnode, Entry, zset);
-    return (entry && entry->type != T_ZSET) ? &entry->zset : NULL;
+    Entry *entry = container_of(zset_hnode, Entry, node);
+    return (entry->type < 2 && entry->type == T_ZSET) ? &entry->zset : NULL;
 }
 
 void do_get(HMap *hmap, std::string &key, Conn *conn) {
@@ -133,7 +133,6 @@ void do_get(HMap *hmap, std::string &key, Conn *conn) {
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
     HNode *node = hm_lookup(hmap, &entry.node, entry_eq);
-    printf("keys: %d\n", hmap->newer.size);
 
     if (!node) {
         out_not_found(conn);
@@ -149,7 +148,7 @@ void do_set(HMap *hmap, Conn *conn, std::string &key, std::string &value) {
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
 
-    HNode *node = hm_lookup(hmap, &entry.node, entry_eq);
+    HNode *node = hm_lookup(hmap, &entry.node, &entry_eq);
     if (node) {
         container_of(node, Entry, node) -> value = value;
     }
@@ -215,11 +214,6 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
 // Adds SCORE if found, NULL if not found, ERROR if set does not exist
 void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     ZSet *zset = find_zset(hmap, global_key);
-    printf("root exists: %p\n", (void*)zset->avl_root);
-    printf("hmap size: %d\n", zset->hmap.newer.size);
-    printf("global key: %s\n", global_key.data());
-    printf("zset key: %s\n", z_key.data());
-
     ZNode *ret = zset_lookup(zset, z_key);
     if (!ret) {
         buf_append_u8(conn->outgoing, TAG_NULL);

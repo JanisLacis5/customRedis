@@ -41,6 +41,7 @@ static ZNode* new_znode(double score, std::string &key) {
     znode->score = score;
     znode->key_len = key.size();
     memcpy(znode->key, key.data(), key.size());
+
     return znode;
 }
 
