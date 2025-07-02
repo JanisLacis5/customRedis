@@ -95,11 +95,7 @@ void do_set(HMap *hmap, Conn *conn, std::string &key, std::string &value) {
 
     HNode *node = hm_lookup(hmap, &entry.node, &entry_eq);
     if (node) {
-        Entry *entry = container_of(node, Entry, node);
-        if (entry->type == T_ZSET) {
-            return out_err(conn, "cant add string value to zset node");
-        }
-        entry->value = value;
+        container_of(node, Entry, node)->value = value;
     }
     else {
         Entry *e = new_entry(key, T_STR);
@@ -151,8 +147,7 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
     else {
         entry = container_of(node, Entry, node);
         if (entry->type != T_ZSET) {
-            out_err(conn, "cant add zset to node that has a string value");
-            return;
+            return out_err(conn, "cant add zset to a non-zset node");
         }
     }
 

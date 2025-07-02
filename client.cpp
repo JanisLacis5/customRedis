@@ -62,7 +62,7 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
 
         printf("(arr) len=%d\n", arr_size);
     }
-    else if (tag == TAG_STR) {
+    else if (tag == TAG_STR || tag == TAG_ERROR) {
         // Read the size
         uint32_t str_size = 0;
         memcpy(&str_size, &buf[curr], 4);
@@ -74,7 +74,7 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
         memcpy(str.data(), &buf[curr], str_size);
         curr += str_size;
 
-        printf("(str) %s\n", str.data());
+        printf("%s %s\n", (tag == TAG_STR ? "(str)" : "(err)"), str.data());
     }
     else if (tag == TAG_DOUBLE) {
         // Read the double
@@ -95,9 +95,6 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
     }
     else if (tag == TAG_NULL) {
         printf("(null)\n");
-    }
-    else if (tag == TAG_ERROR) {
-        // TODO: print the error message when it is implemented
     }
 
     print_res(buf, curr, total_len);

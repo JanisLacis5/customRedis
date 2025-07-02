@@ -21,7 +21,7 @@ void out_double(Conn *conn, double dbl) {
 void out_str(Conn *conn, char *str, uint32_t size) {
     buf_append_u8(conn->outgoing, TAG_STR);
     buf_append_u32(conn->outgoing, size);
-    buf_append(conn->outgoing, (uint8_t*)str,size);
+    buf_append(conn->outgoing, (uint8_t*)str, size);
 }
 
 void out_not_found(Conn *conn) {
@@ -36,8 +36,9 @@ void out_err(Conn *conn, const std::string &err_mes) {
     buf_append_u32(conn->outgoing, RES_ERR);
 
     // Add error message
-    buf_append_u8(conn->outgoing, TAG_STR);
-    out_str(conn, (char*)err_mes.data(), err_mes.size());
+    buf_append_u8(conn->outgoing, TAG_ERROR);
+    buf_append_u32(conn->outgoing, err_mes.size());
+    buf_append(conn->outgoing, (uint8_t*)err_mes.data(), err_mes.size());
 }
 
 size_t out_unknown_arr(Conn *conn) {
