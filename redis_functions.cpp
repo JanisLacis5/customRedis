@@ -112,6 +112,7 @@ static Entry* new_entry(std::string &key, uint32_t type) {
     return entry;
 }
 
+static const ZSet empty;
 static ZSet* find_zset(HMap *hmap, std::string &key) {
     // Find the zset
     Lookup l;
@@ -120,8 +121,7 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
 
     HNode *zset_hnode = hm_lookup(hmap, &l.node, &entry_eq);
     if (!zset_hnode) {
-        printf("ZSet with key %s does not exist\n", key.data());
-        return NULL;
+        return (ZSet*)&empty;
     }
 
     Entry *entry = container_of(zset_hnode, Entry, zset);
@@ -213,10 +213,6 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
 // Adds SCORE if found, NULL if not found, ERROR if set does not exist
 void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     ZSet *zset = find_zset(hmap, global_key);
-    if (!zset) {
-        out_err(conn);
-        return;
-    }
 
     ZNode *ret = zset_lookup(zset, z_key);
     if (!ret) {
@@ -231,10 +227,6 @@ void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_k
 void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
     // Find the zset
     ZSet *zset = find_zset(hmap, global_key);
-    if (!zset) {
-        out_int(conn, 0);
-        return;
-    }
 
     // Find and delete the node
     ZNode *znode = zset_lookup(zset, z_key);
@@ -266,10 +258,6 @@ void do_zrangequery(
     uint32_t limit = UINT32_MAX
 ) {
     ZSet *zset = find_zset(hmap, global_key);
-    if (!zset) {
-        out_err(conn);
-        return;
-    }
 
     // Find the first node that is in range
     ZNode *lb = zset_lower_bound(zset, score_lb, key_lb);

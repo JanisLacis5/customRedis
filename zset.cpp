@@ -33,7 +33,7 @@ static bool hcmp(HNode *node, HNode *key) {
 }
 
 static ZNode* new_znode(double score, std::string &key) {
-    ZNode *znode = (ZNode*)malloc(sizeof(ZNode) + key.size());
+    ZNode *znode = (ZNode*)malloc(sizeof(ZNode) + key.size() + 1);
     avl_init(&znode->avl_node);
     znode->h_node.next = NULL;
     znode->h_node.hcode = str_hash((uint8_t*)key.data(), key.size());
@@ -76,10 +76,8 @@ void zset_delete(ZSet *zset, ZNode *znode) {
     hkey.len = znode->key_len;
     hkey.node.hcode = znode->h_node.hcode;
 
-    hm_delete(&zset->hmap, &hkey.node, hcmp);
-
-    // Delete from the avl tree
     zset->avl_root = avl_del(&znode->avl_node);
+    hm_delete(&zset->hmap, &hkey.node, hcmp);
     free(znode);
 }
 
@@ -105,7 +103,7 @@ bool zset_insert(ZSet *zset, double score, std::string &key) {
     while (*from) {
         curr = *from;
         ZNode *node = container_of(curr, ZNode, avl_node);
-        from = zless(node, score, key) ? &curr->left : &curr->right;
+        from = zless(node, score, key) ? &curr->right : &curr->left;
     }
 
     *from = &znode->avl_node;
@@ -116,6 +114,10 @@ bool zset_insert(ZSet *zset, double score, std::string &key) {
 }
 
 ZNode* zset_lookup(ZSet* zset, std::string& key) {
+    if (!zset->avl_root) {
+        return NULL;
+    }
+
     HKey hkey;
     hkey.len = key.size();
     hkey.name = key;

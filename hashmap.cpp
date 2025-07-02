@@ -72,7 +72,7 @@ HNode* hm_delete(HMap* hmap, HNode* key, bool (*eq)(HNode*, HNode*)) {
 
 void ht_insert(HTab *htab, HNode *node) {
     size_t pos = node->hcode & htab->mask;
-    HNode *next = htab->tab[pos];
+    HNode *next = htab->tab[pos]; // issue
     node->next = next;
     htab->tab[pos] = node;
     htab->size++;
