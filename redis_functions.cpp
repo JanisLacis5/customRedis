@@ -166,6 +166,9 @@ void do_del(HMap *hmap, Conn *conn, std::string &key) {
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
     HNode *node = hm_delete(hmap, &entry.node, entry_eq);
     if (!node) {
+        if (entry.type == T_ZSET) {
+            zset_clear(&entry.zset);
+        }
         delete container_of(node, Entry, node);
     }
 

@@ -71,7 +71,12 @@ static bool zless(ZNode *node, double score, std::string &key) {
 
 void zset_delete(ZSet *zset, ZNode *znode) {
     // Delete from the hashmap
-    hm_delete(&zset->hmap, &znode->h_node, hcmp);
+    HKey hkey;
+    hkey.name = znode->key;
+    hkey.len = znode->key_len;
+    hkey.node.hcode = znode->h_node.hcode;
+
+    hm_delete(&zset->hmap, &hkey.node, hcmp);
 
     // Delete from the avl tree
     zset->avl_root = avl_del(&znode->avl_node);
@@ -85,7 +90,7 @@ bool zset_insert(ZSet *zset, double score, std::string &key) {
     if (node) {
         // Delete and insert again
         zset_delete(zset, node);
-        is_insert = false; // not an insert - this is an update
+        is_insert = false; // not an insert - this is an update / duplicate
     }
 
     // Create the new node
@@ -117,7 +122,7 @@ ZNode* zset_lookup(ZSet* zset, std::string& key) {
     hkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     // Do a hashmap lookup
-    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, hcmp);
+    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, &hcmp);
     return hnode ? container_of(hnode, ZNode, h_node) : NULL;
 }
 
