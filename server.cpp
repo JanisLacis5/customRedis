@@ -58,6 +58,10 @@ static void fd_set_non_blocking(int fd) {
 static uint64_t get_curr_ms() {
     struct timespec tv = {0, 0};
     int err = clock_gettime(CLOCK_MONOTONIC, &tv);
+    if (err) {
+        printf("[server]: error in get_curr_ms\n");
+        return 0;
+    }
     return tv.tv_sec * 1000 + tv.tv_nsec / 1000 / 1000;
 }
 
@@ -80,8 +84,11 @@ static void process_timers() {
 }
 
 static uint64_t timeout_poll() {
+    if (dlist_empty(&global_data.idle_list)) {
+        return (int64_t)TIMEOUT_MS;
+    }
     uint64_t curr = get_curr_ms();
-    Conn *conn = container_of(&global_data.idle_list, Conn, timeout);
+    Conn *conn = container_of(global_data.idle_list.next, Conn, timeout);
     uint64_t conn_timeout = conn->last_active_ms + TIMEOUT_MS;
     uint64_t poll_timout = conn_timeout - curr;
     return std::max((uint64_t)0, poll_timout);
