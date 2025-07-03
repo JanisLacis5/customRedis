@@ -83,17 +83,6 @@ static void process_timers() {
     }
 }
 
-static uint64_t timeout_poll() {
-    if (dlist_empty(&global_data.idle_list)) {
-        return (int64_t)TIMEOUT_MS;
-    }
-    uint64_t curr = get_curr_ms();
-    Conn *conn = container_of(global_data.idle_list.next, Conn, timeout);
-    uint64_t conn_timeout = conn->last_active_ms + TIMEOUT_MS;
-    uint64_t poll_timout = conn_timeout - curr;
-    return std::max((uint64_t)0, poll_timout);
-}
-
 static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
     // Read the first tag (arr) and len
     uint8_t first_tag = 0;
@@ -312,18 +301,12 @@ int main() {
         return -1;
     }
 
-    std::vector<struct pollfd> poll_args;
     fd_set read_fds;
     fd_set write_fds;
 
     while (true) {
         FD_ZERO(&read_fds);
         FD_ZERO(&write_fds);
-
-        // Add the current listening socket as first
-        poll_args.clear();
-        struct pollfd pfd = {fd, POLLIN, 0};
-        poll_args.push_back(pfd);
 
         int maxfd = fd;
         FD_SET(fd, &read_fds);
@@ -344,79 +327,39 @@ int main() {
         int ready =  select(maxfd+1, &read_fds, &write_fds, NULL, &tv);
         errno = 0;
         if (ready == 0) {
-            printf("[server]: select() timed out\n");
+            process_timers();
+            continue;
         }
         if (ready < 0) {
             printf("[server]: issue with select()\n");
             return -1;
         }
 
-        for (Conn* conn: global_data.fd_to_conn) {
-            if (!conn) {
-                continue;
-            }
-
-            // Create poll() args for the current connection
-            struct pollfd pfd = {conn->fd, POLLIN, 0};
-            if (conn->want_write) {
-                pfd.events |= POLLOUT;
-            }
-            if (conn->want_read) {
-                pfd.events |= POLLIN;
-            }
-            poll_args.push_back(pfd);
-        }
-
-        // Call poll()
-        int ret_val = poll(poll_args.data(), (nfds_t)poll_args.size(), timeout_poll());
-        if (ret_val < 0) {
-            if (errno == EINTR) {
-                // Nothing was ready
-                continue;
-            }
-            else {
-                error(fd, "Error calling poll()");
-                return -1;
-            }
-        }
-
         // Handle the listening socket
-        if (poll_args[0].revents) {
-            Conn *conn = handle_accept(fd);
-            if (!conn) {
-                continue;
+        if (FD_ISSET(fd, &read_fds)) {
+            Conn *c = handle_accept(fd);
+            if (c) {
+                if ((size_t)c->fd >= global_data.fd_to_conn.size())
+                    global_data.fd_to_conn.resize(c->fd+1);
+                global_data.fd_to_conn[c->fd] = c;
             }
-
-            // Add this connection to the map
-            if (global_data.fd_to_conn.size() <= (size_t)conn->fd) {
-                global_data.fd_to_conn.resize(conn->fd+1);
-            }
-            global_data.fd_to_conn[conn->fd] = conn;
         }
 
         // Process the rest of the sockets (first on is the listening one so we start at i = 1)
-        for (size_t i = 1; i < poll_args.size(); i++) {
-            uint8_t ready = poll_args[i].revents;
-            if (ready == 0) {
+        for (size_t i = 1; i < global_data.fd_to_conn.size(); i++) {
+            Conn *conn = global_data.fd_to_conn[i];
+            if (!conn) {
                 continue;
             }
 
-            Conn *conn = global_data.fd_to_conn[poll_args[i].fd];
             conn->last_active_ms = get_curr_ms();
             dlist_deatach(&conn->timeout);
             dlist_insert_before(&global_data.idle_list, &conn->timeout);
 
-            // if (ready & POLLIN) {
-            //     handle_read(conn);
-            // }
-            // if (ready & POLLOUT) {
-            //     handle_write(conn);
-            // }
-
             if (FD_ISSET(conn->fd, &write_fds)) {
                 handle_write(conn);
             }
-            if (FD_ISSET(conn->fd, &read_fds) {
+            if (FD_ISSET(conn->fd, &read_fds)) {
                 handle_read(conn);
             }
 
@@ -425,8 +368,8 @@ int main() {
                 global_data.fd_to_conn[conn->fd] = NULL;
                 delete conn;
             }
-
         }
+
         process_timers();
     }
 }
