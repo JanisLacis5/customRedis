@@ -19,6 +19,8 @@ add_library(customRedis STATIC
     out_helpers.h
         dlist.cpp
         dlist.h
+        heap.cpp
+        heap.h
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}
