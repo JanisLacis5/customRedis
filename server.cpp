@@ -10,6 +10,7 @@
 #include <string.h>
 #include <string>
 #include <map>
+#include <time.h>
 
 #include "buffer_funcs.h"
 #include "hashmap.h"
@@ -21,9 +22,13 @@
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
+const uint64_t TIMEOUT_MS = 1000;
+
 struct {
     HMap db;
-} kv_store;
+    DListNode idle_list;
+    std::vector<Conn*> fd_to_conn;
+} global_data;
 
 // Response status codes
 enum ResponseStatusCodes {
@@ -48,6 +53,38 @@ static void error(int fd, const char *mes) {
 
 static void fd_set_non_blocking(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+}
+
+static uint64_t get_curr_ms() {
+    struct timespec tv = {0, 0};
+    int err = clock_gettime(CLOCK_MONOTONIC, &tv);
+    return tv.tv_sec * 1000 + tv.tv_nsec / 1000 / 1000;
+}
+
+static void process_timers() {
+    uint64_t curr_ms = get_curr_ms();
+    while (!dlist_empty(&global_data.idle_list)) {
+        DListNode *curr = global_data.idle_list.next;
+        Conn *conn = container_of(curr, Conn, timeout);
+        uint64_t timeout_ms = conn->last_active_ms + TIMEOUT_MS;
+        if (timeout_ms >= curr_ms) {
+            break;
+        }
+
+        printf("[server]: Closing conn %d because of timeout\n", conn->fd);
+        close(conn->fd);
+        global_data.fd_to_conn[conn->fd] = NULL;
+        dlist_deatach(&conn->timeout);
+        delete conn;
+    }
+}
+
+static uint64_t timeout_poll() {
+    uint64_t curr = get_curr_ms();
+    Conn *conn = container_of(&global_data.idle_list, Conn, timeout);
+    uint64_t conn_timeout = conn->last_active_ms + TIMEOUT_MS;
+    uint64_t poll_timout = conn_timeout - curr;
+    return std::max((uint64_t)0, poll_timout);
 }
 
 static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
@@ -80,33 +117,33 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
 
 static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     if (cmd.size() == 2 && cmd[0] == "get") {
-        do_get(&kv_store.db, cmd[1], conn);
+        do_get(&global_data.db, cmd[1], conn);
     }
     else if (cmd.size() == 3 && cmd[0] == "set") {
-        do_set(&kv_store.db, conn, cmd[1], cmd[2]);
+        do_set(&global_data.db, conn, cmd[1], cmd[2]);
     }
     else if (cmd.size() == 2 && cmd[0] == "del") {
-        do_del(&kv_store.db, conn, cmd[1]);
+        do_del(&global_data.db, conn, cmd[1]);
     }
     else if (cmd.size() == 1 && cmd[0] == "keys") {
-        do_keys(&kv_store.db, conn);
+        do_keys(&global_data.db, conn);
     }
     else if (cmd.size() == 4 && cmd[0] == "zadd") {
         double score = std::stod(cmd[2]);
-        do_zadd(&kv_store.db, conn, cmd[1], score, cmd[3]);
+        do_zadd(&global_data.db, conn, cmd[1], score, cmd[3]);
     }
     else if (cmd.size() == 3 && cmd[0] == "zscore") {
-        do_zscore(&kv_store.db, conn, cmd[1], cmd[2]);
+        do_zscore(&global_data.db, conn, cmd[1], cmd[2]);
     }
     else if (cmd.size() == 3 && cmd[0] == "zrem") {
-        do_zrem(&kv_store.db, conn, cmd[1], cmd[2]);
+        do_zrem(&global_data.db, conn, cmd[1], cmd[2]);
     }
     else if (cmd[0] == "zquery") {
         double score = std::stod(cmd[2]);
         int32_t offset = std::stoi(cmd[4]);
         uint32_t limit = std::stoi(cmd[5]);
         do_zrangequery(
-            &kv_store.db,
+            &global_data.db,
             conn,
             cmd[1],
             score,
@@ -197,6 +234,8 @@ static Conn* handle_accept(int fd) {
     Conn *conn = new Conn();
     conn->fd = connfd;
     conn->want_read = true;
+    conn->last_active_ms = get_curr_ms();
+    dlist_insert_before(&global_data.idle_list, &conn->timeout);
     return conn;
 }
 
@@ -245,6 +284,7 @@ int main() {
         return -1;
     }
     int val = 1;
+    dlist_init(&global_data.idle_list);
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
     // Bind
@@ -265,7 +305,6 @@ int main() {
         return -1;
     }
 
-    std::vector<Conn*> fd_to_conn;
     std::vector<struct pollfd> poll_args;
     while (true) {
         // Add the current listening socket as first
@@ -273,7 +312,7 @@ int main() {
         struct pollfd pfd = {fd, POLLIN, 0};
         poll_args.push_back(pfd);
 
-        for (Conn* conn: fd_to_conn) {
+        for (Conn* conn: global_data.fd_to_conn) {
             if (!conn) {
                 continue;
             }
@@ -290,7 +329,7 @@ int main() {
         }
 
         // Call poll()
-        int ret_val = poll(poll_args.data(), (nfds_t)poll_args.size(), -1);
+        int ret_val = poll(poll_args.data(), (nfds_t)poll_args.size(), timeout_poll());
         if (ret_val < 0) {
             if (errno == EINTR) {
                 // Nothing was ready
@@ -310,16 +349,24 @@ int main() {
             }
 
             // Add this connection to the map
-            if (fd_to_conn.size() <= (size_t)conn->fd) {
-                fd_to_conn.resize(conn->fd+1);
+            if (global_data.fd_to_conn.size() <= (size_t)conn->fd) {
+                global_data.fd_to_conn.resize(conn->fd+1);
             }
-            fd_to_conn[conn->fd] = conn;
+            global_data.fd_to_conn[conn->fd] = conn;
         }
 
         // Process the rest of the sockets (first on is the listening one so we start at i = 1)
         for (size_t i = 1; i < poll_args.size(); i++) {
             uint8_t ready = poll_args[i].revents;
-            Conn *conn = fd_to_conn[poll_args[i].fd];
+            if (ready == 0) {
+                continue;
+            }
+
+            Conn *conn = global_data.fd_to_conn[poll_args[i].fd];
+            conn->last_active_ms = get_curr_ms();
+            dlist_deatach(&conn->timeout);
+            dlist_insert_before(&global_data.idle_list, &conn->timeout);
+
             if (ready & POLLIN) {
                 handle_read(conn);
             }
@@ -329,9 +376,11 @@ int main() {
 
             if ((ready & POLLERR) && conn->want_close) {
                 close(conn->fd);
-                fd_to_conn[conn->fd] = NULL;
+                global_data.fd_to_conn[conn->fd] = NULL;
                 delete conn;
             }
+
         }
+        process_timers();
     }
 }
