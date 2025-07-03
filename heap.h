@@ -5,8 +5,9 @@
 
 struct HeapNode {
     int64_t val;
+    size_t *pos_ref;  // points to Entry::heap_idx
 };
 
-void heap_fix(std::vector<HeapNode*> &heap, size_t pos);
+void heap_fix(std::vector<HeapNode> &heap, size_t pos);
 
 #endif
