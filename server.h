@@ -46,8 +46,12 @@ struct Conn {
     std::vector<uint8_t> incoming; // data for the app to process
     std::vector<uint8_t> outgoing; // responses
 
-    DListNode timeout;
+    DListNode idle_timeout;
+    DListNode read_timeout;
+    DListNode write_timeout;
     uint64_t last_active_ms = 0;
+    uint64_t last_read_ms = 0;
+    uint64_t last_write_ms = 0;
 };
 
 #endif

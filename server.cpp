@@ -22,11 +22,15 @@
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
-const uint64_t TIMEOUT_MS = 1000;
+const uint64_t IDLE_TIMEOUT_MS = 1 * 1000;
+const uint64_t READ_TIMEOUT_MS = 10 * 000;
+const uint64_t WRITE_TIMEOUT_MS = 5 * 1000;
 
 struct {
     HMap db;
     DListNode idle_list;
+    DListNode read_list;
+    DListNode write_list;
     std::vector<Conn*> fd_to_conn;
 } global_data;
 
@@ -65,31 +69,65 @@ static uint64_t get_curr_ms() {
     return tv.tv_sec * 1000 + tv.tv_nsec / 1000 / 1000;
 }
 
+static void close_conn(Conn *conn) {
+    close(conn->fd);
+    global_data.fd_to_conn[conn->fd] = NULL;
+    dlist_deatach(&conn->idle_timeout);
+    dlist_deatach(&conn->read_timeout);
+    dlist_deatach(&conn->write_timeout);
+    delete conn;
+}
+
 static void process_timers() {
     uint64_t curr_ms = get_curr_ms();
+
+    // Idle timeout
     while (!dlist_empty(&global_data.idle_list)) {
         DListNode *curr = global_data.idle_list.next;
-        Conn *conn = container_of(curr, Conn, timeout);
-        uint64_t timeout_ms = conn->last_active_ms + TIMEOUT_MS;
+        Conn *conn = container_of(curr, Conn, idle_timeout);
+        uint64_t timeout_ms = conn->last_active_ms + IDLE_TIMEOUT_MS;
         if (timeout_ms >= curr_ms) {
             break;
         }
 
-        printf("[server]: Closing conn %d because of timeout\n", conn->fd);
-        close(conn->fd);
-        global_data.fd_to_conn[conn->fd] = NULL;
-        dlist_deatach(&conn->timeout);
-        delete conn;
+        printf("[server]: Closing conn %d because of idle timeout\n", conn->fd);
+        close_conn(conn);
+    }
+
+    // Read timeout
+    while (!dlist_empty(&global_data.read_list)) {
+        DListNode *curr = global_data.read_list.next;
+        Conn *conn = container_of(curr, Conn, read_timeout);
+        uint64_t timeout_ms = conn->last_read_ms + READ_TIMEOUT_MS;
+        if (timeout_ms >= curr_ms) {
+            break;
+        }
+
+        printf("[server]: Closing conn %d because of read timeout\n", conn->fd);
+        close_conn(conn);
+    }
+
+    // Write timeout
+    while (!dlist_empty(&global_data.write_list)) {
+        DListNode *curr = global_data.write_list.next;
+        Conn *conn = container_of(curr, Conn, write_timeout);
+        uint64_t timeout_ms = conn->last_write_ms + WRITE_TIMEOUT_MS;
+        if (timeout_ms >= curr_ms) {
+            break;
+        }
+
+        printf("[server]: Closing conn %d because of write timeout\n", conn->fd);
+        close_conn(conn);
     }
 }
 
 static uint64_t timeout_poll() {
     if (dlist_empty(&global_data.idle_list)) {
-        return (int64_t)TIMEOUT_MS;
+        return (int64_t)IDLE_TIMEOUT_MS;
     }
     uint64_t curr = get_curr_ms();
-    Conn *conn = container_of(global_data.idle_list.next, Conn, timeout);
-    uint64_t conn_timeout = conn->last_active_ms + TIMEOUT_MS;
+    Conn *conn = container_of(global_data.idle_list.next, Conn, idle_timeout);
+    uint64_t conn_timeout = conn->last_active_ms + IDLE_TIMEOUT_MS;
     uint64_t poll_timout = conn_timeout - curr;
     return std::max((uint64_t)0, poll_timout);
 }
@@ -242,7 +280,9 @@ static Conn* handle_accept(int fd) {
     conn->fd = connfd;
     conn->want_read = true;
     conn->last_active_ms = get_curr_ms();
-    dlist_insert_before(&global_data.idle_list, &conn->timeout);
+    conn->last_read_ms = get_curr_ms();
+    conn->last_write_ms = get_curr_ms();
+    dlist_insert_before(&global_data.idle_list, &conn->idle_timeout);
     return conn;
 }
 
@@ -254,15 +294,20 @@ static void handle_read(Conn *conn) {
     }
     if (rv <= 0) {
         conn->want_close = true;
+        dlist_deatach(&conn->read_timeout);
         return;
     }
 
     buf_append(conn->incoming, rbuf, (size_t)rv);
     while(try_one_req(conn)) {}
+    conn->last_read_ms = get_curr_ms();
 
     if (conn->outgoing.size() > 0) {
         conn->want_read = false;
         conn->want_write = true;
+        dlist_deatach(&conn->read_timeout);
+        dlist_insert_before(&global_data.write_list, &conn->write_timeout);
+        conn->last_write_ms = get_curr_ms();
     }
 }
 
@@ -273,13 +318,18 @@ static void handle_write(Conn *conn) {
     }
     if (rv <= 0) {
         conn->want_close = true;
+        dlist_deatach(&conn->write_timeout);
         return;
     }
     buf_consume(conn->outgoing, rv);
+    conn->last_write_ms = get_curr_ms();
 
     if (conn->outgoing.size() == 0) {
         conn->want_read = true;
         conn->want_write = false;
+        dlist_deatach(&conn->write_timeout);
+        dlist_insert_before(&global_data.read_list, &conn->read_timeout);
+        conn->last_read_ms = get_curr_ms();
     }
 }
 
@@ -292,6 +342,8 @@ int main() {
     }
     int val = 1;
     dlist_init(&global_data.idle_list);
+    dlist_init(&global_data.read_list);
+    dlist_init(&global_data.write_list);
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
     // Bind
@@ -371,8 +423,8 @@ int main() {
 
             Conn *conn = global_data.fd_to_conn[poll_args[i].fd];
             conn->last_active_ms = get_curr_ms();
-            dlist_deatach(&conn->timeout);
-            dlist_insert_before(&global_data.idle_list, &conn->timeout);
+            dlist_deatach(&conn->idle_timeout);
+            dlist_insert_before(&global_data.idle_list, &conn->idle_timeout);
 
             if (ready & POLLIN) {
                 handle_read(conn);
@@ -380,11 +432,8 @@ int main() {
             if (ready & POLLOUT) {
                 handle_write(conn);
             }
-
             if ((ready & POLLERR) && conn->want_close) {
-                close(conn->fd);
-                global_data.fd_to_conn[conn->fd] = NULL;
-                delete conn;
+                close_conn(conn);
             }
 
         }
