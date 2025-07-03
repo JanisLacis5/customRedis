@@ -22,7 +22,7 @@
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
-const uint64_t TIMEOUT_MS = 1000;
+const uint64_t TIMEOUT_MS = 1 * 1000;  // seconds * 1000
 
 struct {
     HMap db;
@@ -313,11 +313,43 @@ int main() {
     }
 
     std::vector<struct pollfd> poll_args;
+    fd_set read_fds;
+    fd_set write_fds;
+
     while (true) {
+        FD_ZERO(&read_fds);
+        FD_ZERO(&write_fds);
+
         // Add the current listening socket as first
         poll_args.clear();
         struct pollfd pfd = {fd, POLLIN, 0};
         poll_args.push_back(pfd);
+
+        int maxfd = fd;
+        FD_SET(fd, &read_fds);
+        for (Conn* conn: global_data.fd_to_conn) {
+            if (!conn) {
+                continue;
+            }
+            if (conn->want_write) {
+                FD_SET(conn->fd, &write_fds);
+                maxfd = std::max(maxfd, conn->fd);
+            }
+            if (conn->want_read) {
+                FD_SET(conn->fd, &read_fds);
+                maxfd = std::max(maxfd, conn->fd);
+            }
+        }
+        struct timeval tv = {1, 0};
+        int ready =  select(maxfd+1, &read_fds, &write_fds, NULL, &tv);
+        errno = 0;
+        if (ready == 0) {
+            printf("[server]: select() timed out\n");
+        }
+        if (ready < 0) {
+            printf("[server]: issue with select()\n");
+            return -1;
+        }
 
         for (Conn* conn: global_data.fd_to_conn) {
             if (!conn) {
@@ -374,11 +406,18 @@ int main() {
             dlist_deatach(&conn->timeout);
             dlist_insert_before(&global_data.idle_list, &conn->timeout);
 
-            if (ready & POLLIN) {
-                handle_read(conn);
-            }
-            if (ready & POLLOUT) {
+            // if (ready & POLLIN) {
+            //     handle_read(conn);
+            // }
+            // if (ready & POLLOUT) {
+            //     handle_write(conn);
+            // }
+
+            if (FD_ISSET(conn->fd, &write_fds)) {
                 handle_write(conn);
+            }
+            if (FD_ISSET(conn->fd, &read_fds) {
+                handle_read(conn);
             }
 
             if ((ready & POLLERR) && conn->want_close) {
