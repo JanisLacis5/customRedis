@@ -18,10 +18,13 @@
 #include "redis_functions.h"
 #include "zset.h"
 #include "avl_tree.h"
+#include "heap.h"
+#include "out_helpers.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
+const uint32_t MAX_TTL_TASKS = 200;
 const uint64_t IDLE_TIMEOUT_MS = 1 * 1000;
 const uint64_t READ_TIMEOUT_MS = 10 * 000;
 const uint64_t WRITE_TIMEOUT_MS = 5 * 1000;
@@ -32,22 +35,12 @@ struct {
     DListNode read_list;
     DListNode write_list;
     std::vector<Conn*> fd_to_conn;
+    std::vector<HeapNode> ttl_heap;
 } global_data;
 
-// Response status codes
-enum ResponseStatusCodes {
-    RES_OK = 0,
-    RES_ERR = 1,    // error
-    RES_NX = 2,     // key not found
-};
-
-enum Tags {
-    TAG_INT = 0,
-    TAG_STR = 1,
-    TAG_ARR = 2,
-    TAG_NULL = 3,
-    TAG_ERROR = 4,
-    TAG_DOUBLE = 5
+enum EntryTypes {
+    T_STR = 0,
+    T_ZSET = 1
 };
 
 static void error(int fd, const char *mes) {
@@ -76,6 +69,32 @@ static void close_conn(Conn *conn) {
     dlist_deatach(&conn->read_timeout);
     dlist_deatach(&conn->write_timeout);
     delete conn;
+}
+
+static void ent_set_ttl(Entry *entry, uint64_t ttl) {
+    HeapNode heap_node;
+    heap_node.val = get_curr_ms() + ttl;
+    heap_node.pos_ref = &entry->heap_idx;
+
+    global_data.ttl_heap.push_back(heap_node);
+    heap_fix(global_data.ttl_heap, global_data.ttl_heap.size() - 1);
+}
+
+static void ent_rem_ttl(Entry *entry) {
+    // Remove from the heap
+    global_data.ttl_heap[entry->heap_idx] = global_data.ttl_heap.back();
+    global_data.ttl_heap.pop_back();
+
+    if (entry->heap_idx < global_data.ttl_heap.size()) {
+        heap_fix(global_data.ttl_heap, entry->heap_idx);
+    }
+
+    // Reset heap index
+    entry->heap_idx = -1;
+}
+
+static bool hnode_same(HNode *node, HNode *key) {
+    return node == key;
 }
 
 static void process_timers() {
@@ -119,15 +138,30 @@ static void process_timers() {
         printf("[server]: Closing conn %d because of write timeout\n", conn->fd);
         close_conn(conn);
     }
+
+    // Entry timeouts
+    // while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
+    //     Entry *ent = container_of(global_data.ttl_heap[0].pos_ref, Entry, heap_idx);
+    //     hm_delete(&global_data.db, &ent->node, &hnode_same);
+    //     entry_del(ent);
+    // }
 }
 
-static uint64_t timeout_poll() {
+static uint64_t next_timer_ms() {
     if (dlist_empty(&global_data.idle_list)) {
         return (int64_t)IDLE_TIMEOUT_MS;
     }
     uint64_t curr = get_curr_ms();
+
+    // Get the smallest timer from the sockets
     Conn *conn = container_of(global_data.idle_list.next, Conn, idle_timeout);
     uint64_t conn_timeout = conn->last_active_ms + IDLE_TIMEOUT_MS;
+
+    // Check if there is a smaller entry timeout
+    if (!global_data.ttl_heap.empty()) {
+        conn_timeout = std::min(conn_timeout, global_data.ttl_heap[0].val);
+    }
+
     uint64_t poll_timout = conn_timeout - curr;
     return std::max((uint64_t)0, poll_timout);
 }
@@ -183,6 +217,22 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     else if (cmd.size() == 3 && cmd[0] == "zrem") {
         do_zrem(&global_data.db, conn, cmd[1], cmd[2]);
     }
+    else if (cmd.size() == 3 && cmd[0] == "expire") {
+        std::string key = cmd[1];
+        uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
+        Entry *entry = container_of(key.data(), Entry, key);
+        ent_set_ttl(entry, ttl_ms);
+        out_null(conn);
+    }
+    else if (cmd.size() == 2 && cmd[0] == "ttl") {
+        Entry *entry = container_of(cmd[1].data(), Entry, key);
+        uint32_t ttl = container_of(entry->heap_idx, HeapNode, pos_ref)->val / 1000;
+        out_int(conn, ttl);
+    }
+    else if (cmd.size() == 2 && cmd[0] == "persist") {
+        ent_rem_ttl(container_of(cmd[1].data(), Entry, key));
+        out_null(conn);
+    }
     else if (cmd[0] == "zquery") {
         double score = std::stod(cmd[2]);
         int32_t offset = std::stoi(cmd[4]);
@@ -198,9 +248,7 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
         );
     }
     else {
-        // TODO: add error message
-        buf_append_u32(conn->outgoing, RES_ERR);
-        buf_append_u8(conn->outgoing, TAG_NULL);
+        out_err(conn, "unknown command");
     }
 }
 
@@ -333,6 +381,14 @@ static void handle_write(Conn *conn) {
     }
 }
 
+void entry_del(Entry* entry) {
+    if (entry->type == T_ZSET) {
+        zset_clear(&entry->zset);
+    }
+    ent_rem_ttl(entry);
+    delete entry;
+}
+
 int main() {
     // Create
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -388,7 +444,7 @@ int main() {
         }
 
         // Call poll()
-        int ret_val = poll(poll_args.data(), (nfds_t)poll_args.size(), timeout_poll());
+        int ret_val = poll(poll_args.data(), (nfds_t)poll_args.size(), next_timer_ms());
         if (ret_val < 0) {
             if (errno == EINTR) {
                 // Nothing was ready

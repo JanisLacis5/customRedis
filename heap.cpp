@@ -34,7 +34,7 @@ void heap_down(std::vector<HeapNode> &heap, size_t pos) {
     while (pos < size) {
         size_t left_ch = heap_left(pos);
         size_t right_ch = heap_right(pos);
-        int64_t min_val = node.val;
+        uint64_t min_val = node.val;
 
         if (left_ch < size) min_val = std::min(min_val, heap[left_ch].val);
         if (right_ch < size) min_val = std::min(min_val, heap[right_ch].val);
@@ -43,7 +43,6 @@ void heap_down(std::vector<HeapNode> &heap, size_t pos) {
             break;
         }
 
-        // size_t next_pos = min_val == heap[left_ch].val ? left_ch : right_ch;
         size_t next_pos = left_ch;
         if (right_ch < heap.size() && heap[right_ch].val < heap[left_ch].val) {
             next_pos = left_ch;

@@ -3,6 +3,7 @@
 
 #include "hashmap.h"
 #include "server.h"
+#include "zset.h"
 
 // Hashmap functions
 void do_get(HMap *hmap, std::string &key, Conn *conn);

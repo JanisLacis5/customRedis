@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 struct HeapNode {
-    int64_t val;
+    uint64_t val;  // unsigned because it is used for timeouts
     size_t *pos_ref;  // points to Entry::heap_idx
 };
 

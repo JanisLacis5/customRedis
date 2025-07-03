@@ -1,25 +1,18 @@
 #include <string.h>
 
+#include "redis_functions.h"
 #include "buffer_funcs.h"
 #include "hashmap.h"
+#include "heap.h"
 #include "zset.h"
 #include "out_helpers.h"
+#include "server.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
 enum EntryTypes {
     T_STR = 0,
     T_ZSET = 1
-};
-
-struct Entry {
-    HNode node;
-    std::string key;
-    uint32_t type = 2;
-
-    // One of the variants
-    std::string value;
-    ZSet zset;
 };
 
 struct Lookup {
@@ -111,10 +104,7 @@ void do_del(HMap *hmap, Conn *conn, std::string &key) {
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
     HNode *node = hm_delete(hmap, &entry.node, entry_eq);
     if (!node) {
-        if (entry.type == T_ZSET) {
-            zset_clear(&entry.zset);
-        }
-        delete container_of(node, Entry, node);
+        entry_del(container_of(node, Entry, node));
     }
 
     buf_append_u8(conn->outgoing, TAG_NULL);
@@ -197,8 +187,8 @@ void do_zrangequery(
     std::string &global_key,
     double score_lb,
     std::string &key_lb,
-    int32_t offset = 0,
-    uint32_t limit = UINT32_MAX
+    int32_t offset,
+    uint32_t limit
 ) {
     ZSet *zset = find_zset(hmap, global_key);
 

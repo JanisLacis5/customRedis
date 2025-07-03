@@ -41,6 +41,10 @@ void out_err(Conn *conn, const std::string &err_mes) {
     buf_append(conn->outgoing, (uint8_t*)err_mes.data(), err_mes.size());
 }
 
+void out_null(Conn *conn) {
+    buf_append_u8(conn->outgoing, TAG_NULL);
+}
+
 size_t out_unknown_arr(Conn *conn) {
     buf_append_u8(conn->outgoing, TAG_ARR);
     buf_append_u32(conn->outgoing, 0); // to be updated
