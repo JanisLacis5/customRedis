@@ -25,6 +25,7 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 # Features
 
 - **Basic key–value operations**: `GET`, `SET`, `DEL`, `KEYS`
+- **Hashsets**: `HGET`, `HSET`, `HDEL`, `HGETALL`
 - **Sorted sets**: `ZADD`, `ZSCORE`, `ZREM`, `ZQUERY` (range query by score)
 - **Key expiration**: `EXPIRE`, `TTL`, `PERSIST`
 - **Non-blocking I/O** using `poll()` and configurable timeouts
