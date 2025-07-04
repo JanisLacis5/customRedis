@@ -337,5 +337,22 @@ void do_hdel(Conn *conn, std::vector<std::string> &cmd) {
 }
 
 void do_hgetall(Conn *conn, std::vector<std::string> &cmd) {
+    // Find the hmap node
+    Lookup key;
+    key.key = cmd[1];
+    key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
+    HNode *global_hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+    if (!global_hnode) {
+        return out_null(conn);
+    }
+    Entry *hmap_e = container_of(global_hnode, Entry, node);
+
+    std::vector<std::string> keys;
+    hm_keys(&hmap_e->hmap, &hm_keys_cb, keys);
+
+    out_arr(conn, keys.size());
+    for (std::string &key: keys) {
+        out_str(conn, key.data(), key.size());
+    }
 }
