@@ -166,43 +166,42 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
 
 static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     if (cmd.size() == 2 && cmd[0] == "get") {
-        do_get(&global_data.db, cmd[1], conn);
+        do_get(cmd[1], conn);
     }
     else if (cmd.size() == 3 && cmd[0] == "set") {
-        do_set(&global_data.db, conn, cmd[1], cmd[2]);
+        do_set(conn, cmd[1], cmd[2]);
     }
     else if (cmd.size() == 2 && cmd[0] == "del") {
-        do_del(&global_data.db, conn, cmd[1]);
+        do_del(conn, cmd[1]);
     }
     else if (cmd.size() == 1 && cmd[0] == "keys") {
-        do_keys(&global_data.db, conn);
+        do_keys(conn);
     }
     else if (cmd.size() == 4 && cmd[0] == "zadd") {
         double score = std::stod(cmd[2]);
-        do_zadd(&global_data.db, conn, cmd[1], score, cmd[3]);
+        do_zadd(conn, cmd[1], score, cmd[3]);
     }
     else if (cmd.size() == 3 && cmd[0] == "zscore") {
-        do_zscore(&global_data.db, conn, cmd[1], cmd[2]);
+        do_zscore(conn, cmd[1], cmd[2]);
     }
     else if (cmd.size() == 3 && cmd[0] == "zrem") {
-        do_zrem(&global_data.db, conn, cmd[1], cmd[2]);
+        do_zrem(conn, cmd[1], cmd[2]);
     }
     else if (cmd.size() == 3 && cmd[0] == "expire") {
         uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
-        do_expire(&global_data.db, conn, cmd[1], ttl_ms);
+        do_expire(conn, cmd[1], ttl_ms);
     }
     else if (cmd.size() == 2 && cmd[0] == "ttl") {
-        do_ttl(&global_data.db, conn, global_data.ttl_heap, cmd[1], get_curr_ms());
+        do_ttl(conn, global_data.ttl_heap, cmd[1], get_curr_ms());
     }
     else if (cmd.size() == 2 && cmd[0] == "persist") {
-        do_persist(&global_data.db, conn, cmd[1]);
+        do_persist(conn, cmd[1]);
     }
     else if (cmd[0] == "zquery") {
         double score = std::stod(cmd[2]);
         int32_t offset = std::stoi(cmd[4]);
         uint32_t limit = std::stoi(cmd[5]);
         do_zrangequery(
-            &global_data.db,
             conn,
             cmd[1],
             score,

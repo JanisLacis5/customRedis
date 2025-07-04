@@ -32,11 +32,11 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
     return (entry->type < 2 && entry->type == T_ZSET) ? &entry->zset : NULL;
 }
 
-void do_get(HMap *hmap, std::string &key, Conn *conn) {
+void do_get(std::string &key, Conn *conn) {
     Entry entry;
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-    HNode *node = hm_lookup(hmap, &entry.node, entry_eq);
+    HNode *node = hm_lookup(&global_data.db, &entry.node, entry_eq);
 
     if (!node) {
         out_not_found(conn);
@@ -47,28 +47,28 @@ void do_get(HMap *hmap, std::string &key, Conn *conn) {
     }
 }
 
-void do_set(HMap *hmap, Conn *conn, std::string &key, std::string &value) {
+void do_set(Conn *conn, std::string &key, std::string &value) {
     Entry entry;
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
 
-    HNode *node = hm_lookup(hmap, &entry.node, &entry_eq);
+    HNode *node = hm_lookup(&global_data.db, &entry.node, &entry_eq);
     if (node) {
         container_of(node, Entry, node)->value = value;
     }
     else {
         Entry *e = new_entry(key, T_STR);
         e->value = value;
-        hm_insert(hmap, &e->node);
+        hm_insert(&global_data.db, &e->node);
     }
     buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
-void do_del(HMap *hmap, Conn *conn, std::string &key) {
+void do_del(Conn *conn, std::string &key) {
     Entry entry;
     entry.key = key;
     entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-    HNode *node = hm_delete(hmap, &entry.node, entry_eq);
+    HNode *node = hm_delete(&global_data.db, &entry.node, entry_eq);
     if (!node) {
         entry_del(container_of(node, Entry, node));
     }
@@ -76,9 +76,9 @@ void do_del(HMap *hmap, Conn *conn, std::string &key) {
     buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
-void do_keys(HMap *hmap, Conn *conn) {
+void do_keys(Conn *conn) {
     std::vector<std::string> keys;
-    hm_keys(hmap, &hm_keys_cb, keys);
+    hm_keys(&global_data.db, &hm_keys_cb, keys);
 
     out_arr(conn, keys.size());
     for (std::string &key: keys) {
@@ -88,17 +88,17 @@ void do_keys(HMap *hmap, Conn *conn) {
 }
 
 // Adds 1 if node was inserted, 0 if node was updated (this key existed in the set already)
-void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std::string &z_key) {
+void do_zadd(Conn *conn, std::string &global_key, double &score, std::string &z_key) {
     // Find the zset
     Lookup l;
     l.node.hcode = str_hash((uint8_t*)global_key.data(), global_key.size());
     l.key = global_key;
-    HNode *node = hm_lookup(hmap, &l.node, &entry_eq);
+    HNode *node = hm_lookup(&global_data.db, &l.node, &entry_eq);
 
     Entry *entry = NULL;
     if (!node) {
         entry = new_entry(global_key, T_ZSET);
-        hm_insert(hmap, &entry->node);
+        hm_insert(&global_data.db, &entry->node);
     }
     else {
         entry = container_of(node, Entry, node);
@@ -112,8 +112,8 @@ void do_zadd(HMap *hmap, Conn *conn, std::string &global_key, double &score, std
 }
 
 // Adds SCORE if found, NULL if not found, ERROR if set does not exist
-void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
-    ZSet *zset = find_zset(hmap, global_key);
+void do_zscore(Conn *conn, std::string &global_key, std::string &z_key) {
+    ZSet *zset = find_zset(&global_data.db, global_key);
     ZNode *ret = zset_lookup(zset, z_key);
     if (!ret) {
         buf_append_u8(conn->outgoing, TAG_NULL);
@@ -123,9 +123,9 @@ void do_zscore(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_k
 }
 
 // Adds 0 if the key or set was not found and not deleted, 1 if key was deleted
-void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key) {
+void do_zrem(Conn *conn, std::string &global_key, std::string &z_key) {
     // Find the zset
-    ZSet *zset = find_zset(hmap, global_key);
+    ZSet *zset = find_zset(&global_data.db, global_key);
 
     // Find and delete the node
     ZNode *znode = zset_lookup(zset, z_key);
@@ -139,7 +139,6 @@ void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key
 }
 
 /*
- *  HMap *hmap - global hashmap
  *  Conn *conn - connection between server and client
  *  std::string &global_key - key to zset in the global hashmap
  *  double score_lb - lower bound for score
@@ -148,7 +147,6 @@ void do_zrem(HMap *hmap, Conn *conn, std::string &global_key, std::string &z_key
  *  uint32_t limit - the maximum number of pairs to return after applying the offset
  */
 void do_zrangequery(
-    HMap *hmap,
     Conn *conn,
     std::string &global_key,
     double score_lb,
@@ -156,7 +154,7 @@ void do_zrangequery(
     int32_t offset,
     uint32_t limit
 ) {
-    ZSet *zset = find_zset(hmap, global_key);
+    ZSet *zset = find_zset(&global_data.db, global_key);
 
     // Find the first node that is in range
     ZNode *lb = zset_lower_bound(zset, score_lb, key_lb);
@@ -184,12 +182,12 @@ void do_zrangequery(
     memcpy(&conn->outgoing[size_pos], &size, 4);
 }
 
-void do_expire(HMap *hmap, Conn *conn, std::string &key, uint32_t ttl_ms) {
+void do_expire(Conn *conn, std::string &key, uint32_t ttl_ms) {
     Lookup lkey;
     lkey.key = key;
     lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(hmap, &lkey.node, &entry_eq);
+    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node, &entry_eq);
     if (!entry_hnode) {
         printf("here\n");
         return out_null(conn);
@@ -200,12 +198,12 @@ void do_expire(HMap *hmap, Conn *conn, std::string &key, uint32_t ttl_ms) {
     out_null(conn);
 }
 
-void do_ttl(HMap *hmap, Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t curr_ms) {
+void do_ttl(Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t curr_ms) {
     Lookup lkey;
     lkey.key = key;
     lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(hmap, &lkey.node, &entry_eq);
+    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node, &entry_eq);
     if (!entry_hnode) {
         return out_null(conn);
     }
@@ -215,12 +213,12 @@ void do_ttl(HMap *hmap, Conn *conn, std::vector<HeapNode> &heap, std::string &ke
     out_int(conn, ttl);
 }
 
-void do_persist(HMap *hmap, Conn *conn, std::string &key) {
+void do_persist(Conn *conn, std::string &key) {
     Lookup lkey;
     lkey.key = key;
     lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(hmap, &lkey.node, &entry_eq);
+    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node, &entry_eq);
     if (!entry_hnode) {
         return out_null(conn);
     }
