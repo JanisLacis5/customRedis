@@ -20,6 +20,9 @@ static void *work(void *arg) {
 }
 
 void threadpool_init(ThreadPool* tp, uint32_t thread_cnt) {
+    pthread_mutex_init(&tp->mutex, NULL);
+    pthread_cond_init(&tp->cond, NULL);
+
     tp->threads.resize(thread_cnt);
     for (size_t i = 0; i < thread_cnt; i++) {
         pthread_create(&tp->threads[i], NULL, &work, tp);
