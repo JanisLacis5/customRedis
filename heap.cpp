@@ -59,9 +59,6 @@ void heap_down(std::vector<HeapNode> &heap, size_t pos) {
 void heap_fix(std::vector<HeapNode> &heap, size_t pos) {
     HeapNode node = heap[pos];
     size_t parent_pos = heap_parent(pos);
-    size_t left_ch = heap_left(pos);
-    size_t right_ch = heap_right(pos);
-
     if (pos > 0 && heap[parent_pos].val > heap[pos].val) {
         heap_up(heap, pos);
     }

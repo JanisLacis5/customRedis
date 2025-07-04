@@ -15,11 +15,6 @@ enum EntryTypes {
     T_ZSET = 1
 };
 
-struct Lookup {
-    HNode node;
-    std::string key;
-};
-
 static bool entry_eq(HNode *node, HNode *key) {
     Entry *ent = container_of(node, Entry, node);
     Lookup *keydata = container_of(key, Lookup, node);

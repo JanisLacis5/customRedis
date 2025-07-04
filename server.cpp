@@ -88,9 +88,6 @@ static void ent_rem_ttl(Entry *entry) {
     if (entry->heap_idx < global_data.ttl_heap.size()) {
         heap_fix(global_data.ttl_heap, entry->heap_idx);
     }
-
-    // Reset heap index
-    entry->heap_idx = -1;
 }
 
 static bool hnode_same(HNode *node, HNode *key) {
@@ -140,11 +137,15 @@ static void process_timers() {
     }
 
     // Entry timeouts
-    // while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
-    //     Entry *ent = container_of(global_data.ttl_heap[0].pos_ref, Entry, heap_idx);
-    //     hm_delete(&global_data.db, &ent->node, &hnode_same);
-    //     entry_del(ent);
-    // }
+    size_t curr_iterations = 0;
+    while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
+        Entry *ent = container_of(global_data.ttl_heap[0].pos_ref, Entry, heap_idx);
+        hm_delete(&global_data.db, &ent->node, &hnode_same);
+        entry_del(ent);
+        if (curr_iterations++ >= MAX_TTL_TASKS) {
+            break;
+        }
+    }
 }
 
 static uint64_t next_timer_ms() {
@@ -194,6 +195,21 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
     return nstr;
 }
 
+// FNV hash
+static uint64_t str_hash(const uint8_t *data, size_t len) {
+    uint32_t h = 0x811C9DC5;
+    for (size_t i = 0; i < len; i++) {
+        h = (h + data[i]) * 0x01000193;
+    }
+    return h;
+}
+
+static bool entry_eq(HNode *node, HNode *key) {
+    Entry *ent = container_of(node, Entry, node);
+    Lookup *keydata = container_of(key, Lookup, node);
+    return ent->key == keydata->key;
+}
+
 static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     if (cmd.size() == 2 && cmd[0] == "get") {
         do_get(&global_data.db, cmd[1], conn);
@@ -218,19 +234,46 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
         do_zrem(&global_data.db, conn, cmd[1], cmd[2]);
     }
     else if (cmd.size() == 3 && cmd[0] == "expire") {
-        std::string key = cmd[1];
+        Lookup key;
+        key.key = cmd[1];
+        key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+        HNode *entry_hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+        if (!entry_hnode) {
+            printf("here\n");
+            return out_null(conn);
+        }
+
         uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
-        Entry *entry = container_of(key.data(), Entry, key);
+        Entry *entry = container_of(entry_hnode, Entry, node);
         ent_set_ttl(entry, ttl_ms);
         out_null(conn);
     }
     else if (cmd.size() == 2 && cmd[0] == "ttl") {
-        Entry *entry = container_of(cmd[1].data(), Entry, key);
-        uint32_t ttl = container_of(entry->heap_idx, HeapNode, pos_ref)->val / 1000;
+        Lookup key;
+        key.key = cmd[1];
+        key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+        HNode *entry_hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+        if (!entry_hnode) {
+            return out_null(conn);
+        }
+
+        Entry *entry = container_of(entry_hnode, Entry, node);
+        uint32_t ttl = (global_data.ttl_heap[entry->heap_idx].val - get_curr_ms()) / 1000;
         out_int(conn, ttl);
     }
     else if (cmd.size() == 2 && cmd[0] == "persist") {
-        ent_rem_ttl(container_of(cmd[1].data(), Entry, key));
+        Lookup key;
+        key.key = cmd[1];
+        key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+        HNode *entry_hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+        if (!entry_hnode) {
+            return out_null(conn);
+        }
+
+        ent_rem_ttl(container_of(entry_hnode, Entry, node));
         out_null(conn);
     }
     else if (cmd[0] == "zquery") {
