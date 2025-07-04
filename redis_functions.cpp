@@ -186,6 +186,51 @@ void do_zrangequery(
     memcpy(&conn->outgoing[size_pos], &size, 4);
 }
 
+void do_expire(HMap *hmap, Conn *conn, std::string &key, uint32_t ttl_ms) {
+    Lookup lkey;
+    lkey.key = key;
+    lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    HNode *entry_hnode = hm_lookup(hmap, &lkey.node, &entry_eq);
+    if (!entry_hnode) {
+        printf("here\n");
+        return out_null(conn);
+    }
+
+    Entry *entry = container_of(entry_hnode, Entry, node);
+    ent_set_ttl(entry, ttl_ms);
+    out_null(conn);
+}
+
+void do_ttl(HMap *hmap, Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t curr_ms) {
+    Lookup lkey;
+    lkey.key = key;
+    lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    HNode *entry_hnode = hm_lookup(hmap, &lkey.node, &entry_eq);
+    if (!entry_hnode) {
+        return out_null(conn);
+    }
+
+    Entry *entry = container_of(entry_hnode, Entry, node);
+    uint32_t ttl = (heap[entry->heap_idx].val - curr_ms) / 1000;
+    out_int(conn, ttl);
+}
+
+void do_persist(HMap *hmap, Conn *conn, std::string &key) {
+    Lookup lkey;
+    lkey.key = key;
+    lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    HNode *entry_hnode = hm_lookup(hmap, &lkey.node, &entry_eq);
+    if (!entry_hnode) {
+        return out_null(conn);
+    }
+
+    ent_rem_ttl(container_of(entry_hnode, Entry, node));
+    out_null(conn);
+}
+
 
 
 

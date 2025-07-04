@@ -2,6 +2,7 @@
 #define REDIS_FUNCTIONS_H
 
 #include "hashmap.h"
+#include "heap.h"
 #include "server.h"
 
 // Hashmap functions
@@ -23,5 +24,8 @@ void do_zrangequery(
     int32_t offset = 0,
     uint32_t limit = UINT32_MAX
 );
+void do_expire(HMap *hmap, Conn *conn, std::string &key, uint32_t ttl_ms);
+void do_ttl(HMap *hmap, Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t curr_ms);
+void do_persist(HMap *hmap, Conn *conn, std::string &key);
 
 #endif
