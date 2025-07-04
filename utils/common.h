@@ -1,5 +1,9 @@
 #ifndef COMMON_H
 #define COMMON_H
+
+// ptr = pointer to a struct's member
+// T = type of the enclosing struct
+// member = id for the field in T that ptr points to
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
 // FNV hash

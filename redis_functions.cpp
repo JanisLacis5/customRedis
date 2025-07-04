@@ -10,8 +10,6 @@
 #include "utils/common.h"
 #include "utils/entry.h"
 
-#define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
-
 static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
     std::string key = container_of(node, Entry, node)->key;
     keys.push_back(key);
