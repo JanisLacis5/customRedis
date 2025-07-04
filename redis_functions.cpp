@@ -7,42 +7,15 @@
 #include "zset.h"
 #include "out_helpers.h"
 #include "server.h"
+#include "utils/common.h"
+#include "utils/entry.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
-
-enum EntryTypes {
-    T_STR = 0,
-    T_ZSET = 1
-};
-
-static bool entry_eq(HNode *node, HNode *key) {
-    Entry *ent = container_of(node, Entry, node);
-    Lookup *keydata = container_of(key, Lookup, node);
-    return ent->key == keydata->key;
-}
-
-// FNV hash
-static uint64_t str_hash(const uint8_t *data, size_t len) {
-    uint32_t h = 0x811C9DC5;
-    for (size_t i = 0; i < len; i++) {
-        h = (h + data[i]) * 0x01000193;
-    }
-    return h;
-}
 
 static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
     std::string key = container_of(node, Entry, node)->key;
     keys.push_back(key);
     return true;
-}
-
-static Entry* new_entry(std::string &key, uint32_t type) {
-    Entry *entry = new Entry();
-    entry->key = key;
-    entry->type = type;
-    entry->node.hcode = str_hash((uint8_t*)key.data(), key.size());
-
-    return entry;
 }
 
 static const ZSet empty;

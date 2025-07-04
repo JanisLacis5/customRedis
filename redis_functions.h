@@ -3,12 +3,6 @@
 
 #include "hashmap.h"
 #include "server.h"
-#include "zset.h"
-
-struct Lookup {
-    HNode node;
-    std::string key;
-};
 
 // Hashmap functions
 void do_get(HMap *hmap, std::string &key, Conn *conn);

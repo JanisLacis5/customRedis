@@ -12,16 +12,17 @@
 #include <map>
 #include <time.h>
 
+#include "server.h"
+#include "dlist.h"
+#include "zset.h"
 #include "buffer_funcs.h"
 #include "hashmap.h"
-#include "server.h"
 #include "redis_functions.h"
-#include "zset.h"
 #include "avl_tree.h"
 #include "heap.h"
 #include "out_helpers.h"
-
-#define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
+#include "utils/common.h"
+#include "utils/entry.h"
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
 const uint32_t MAX_TTL_TASKS = 200;
@@ -37,11 +38,6 @@ struct {
     std::vector<Conn*> fd_to_conn;
     std::vector<HeapNode> ttl_heap;
 } global_data;
-
-enum EntryTypes {
-    T_STR = 0,
-    T_ZSET = 1
-};
 
 static void error(int fd, const char *mes) {
     close(fd);
@@ -69,25 +65,6 @@ static void close_conn(Conn *conn) {
     dlist_deatach(&conn->read_timeout);
     dlist_deatach(&conn->write_timeout);
     delete conn;
-}
-
-static void ent_set_ttl(Entry *entry, uint64_t ttl) {
-    HeapNode heap_node;
-    heap_node.val = get_curr_ms() + ttl;
-    heap_node.pos_ref = &entry->heap_idx;
-
-    global_data.ttl_heap.push_back(heap_node);
-    heap_fix(global_data.ttl_heap, global_data.ttl_heap.size() - 1);
-}
-
-static void ent_rem_ttl(Entry *entry) {
-    // Remove from the heap
-    global_data.ttl_heap[entry->heap_idx] = global_data.ttl_heap.back();
-    global_data.ttl_heap.pop_back();
-
-    if (entry->heap_idx < global_data.ttl_heap.size()) {
-        heap_fix(global_data.ttl_heap, entry->heap_idx);
-    }
 }
 
 static bool hnode_same(HNode *node, HNode *key) {
@@ -193,21 +170,6 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
     }
 
     return nstr;
-}
-
-// FNV hash
-static uint64_t str_hash(const uint8_t *data, size_t len) {
-    uint32_t h = 0x811C9DC5;
-    for (size_t i = 0; i < len; i++) {
-        h = (h + data[i]) * 0x01000193;
-    }
-    return h;
-}
-
-static bool entry_eq(HNode *node, HNode *key) {
-    Entry *ent = container_of(node, Entry, node);
-    Lookup *keydata = container_of(key, Lookup, node);
-    return ent->key == keydata->key;
 }
 
 static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
@@ -424,12 +386,23 @@ static void handle_write(Conn *conn) {
     }
 }
 
-void entry_del(Entry* entry) {
-    if (entry->type == T_ZSET) {
-        zset_clear(&entry->zset);
+void ent_set_ttl(Entry *entry, uint64_t ttl) {
+    HeapNode heap_node;
+    heap_node.val = get_curr_ms() + ttl;
+    heap_node.pos_ref = &entry->heap_idx;
+
+    global_data.ttl_heap.push_back(heap_node);
+    heap_fix(global_data.ttl_heap, global_data.ttl_heap.size() - 1);
+}
+
+void ent_rem_ttl(Entry *entry) {
+    // Remove from the heap
+    global_data.ttl_heap[entry->heap_idx] = global_data.ttl_heap.back();
+    global_data.ttl_heap.pop_back();
+
+    if (entry->heap_idx < global_data.ttl_heap.size()) {
+        heap_fix(global_data.ttl_heap, entry->heap_idx);
     }
-    ent_rem_ttl(entry);
-    delete entry;
 }
 
 int main() {
