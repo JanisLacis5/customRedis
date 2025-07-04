@@ -23,6 +23,8 @@ add_library(customRedis STATIC
         utils/entry.cpp
         utils/entry.h
         utils/common.h
+        threadpool.cpp
+        threadpool.h
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}

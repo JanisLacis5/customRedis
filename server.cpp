@@ -23,21 +23,13 @@
 #include "out_helpers.h"
 #include "utils/common.h"
 #include "utils/entry.h"
+#include "threadpool.h"
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
 const uint32_t MAX_TTL_TASKS = 200;
 const uint64_t IDLE_TIMEOUT_MS = 1 * 1000;
 const uint64_t READ_TIMEOUT_MS = 10 * 000;
 const uint64_t WRITE_TIMEOUT_MS = 5 * 1000;
-
-struct {
-    HMap db;
-    DListNode idle_list;
-    DListNode read_list;
-    DListNode write_list;
-    std::vector<Conn*> fd_to_conn;
-    std::vector<HeapNode> ttl_heap;
-} global_data;
 
 static void error(int fd, const char *mes) {
     close(fd);
@@ -373,6 +365,12 @@ void ent_rem_ttl(Entry *entry) {
 }
 
 int main() {
+    // Initialize global data
+    threadpool_init(&global_data.threadpool, 8);
+    dlist_init(&global_data.idle_list);
+    dlist_init(&global_data.read_list);
+    dlist_init(&global_data.write_list);
+
     // Create
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
@@ -380,9 +378,6 @@ int main() {
         return -1;
     }
     int val = 1;
-    dlist_init(&global_data.idle_list);
-    dlist_init(&global_data.read_list);
-    dlist_init(&global_data.write_list);
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
     // Bind
