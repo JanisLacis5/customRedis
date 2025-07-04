@@ -187,6 +187,18 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     else if (cmd.size() == 3 && cmd[0] == "zrem") {
         do_zrem(conn, cmd[1], cmd[2]);
     }
+    else if (cmd.size() >= 4 && (cmd.size() & 1) == 0 && cmd[0] == "hset") {
+        do_hset(conn, cmd);
+    }
+    else if (cmd.size() == 3 && cmd[0] == "hget") {
+        do_hget(conn, cmd);
+    }
+    else if (cmd.size() == 2 && cmd[0] == "hgetall") {
+        do_hgetall(conn, cmd);
+    }
+    else if (cmd.size() >= 3 && cmd[0] == "hdel") {
+        do_hdel(conn, cmd);
+    }
     else if (cmd.size() == 3 && cmd[0] == "expire") {
         uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
         do_expire(conn, cmd[1], ttl_ms);
@@ -354,6 +366,10 @@ void ent_set_ttl(Entry *entry, uint64_t ttl) {
 }
 
 void ent_rem_ttl(Entry *entry) {
+    if (entry->heap_idx < 0 || entry->heap_idx >= global_data.ttl_heap.size()) {
+        return;
+    }
+
     // Remove from the heap
     global_data.ttl_heap[entry->heap_idx] = global_data.ttl_heap.back();
     global_data.ttl_heap.pop_back();

@@ -5,7 +5,7 @@
 #include "data_structures/heap.h"
 #include "server.h"
 
-// Hashmap functions
+// Keyspace functions
 void do_get(std::string &key, Conn *conn);
 void do_set(Conn *conn, std::string &key, std::string &value);
 void do_del(Conn *conn, std::string &key);
@@ -26,5 +26,11 @@ void do_zrangequery(
 void do_expire(Conn *conn, std::string &key, uint32_t ttl_ms);
 void do_ttl(Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t curr_ms);
 void do_persist(Conn *conn, std::string &key);
+
+// Hashmap functions
+void do_hset(Conn *conn, std::vector<std::string> &cmd);
+void do_hget(Conn *conn, std::vector<std::string> &cmd);
+void do_hgetall(Conn *conn, std::vector<std::string> &cmd);
+void do_hdel(Conn *conn, std::vector<std::string> &cmd);
 
 #endif

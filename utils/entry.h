@@ -6,7 +6,8 @@
 
 enum EntryTypes {
     T_STR = 0,
-    T_ZSET = 1
+    T_ZSET = 1,
+    T_HSET = 2
 };
 
 struct Lookup {
@@ -22,6 +23,7 @@ struct Entry {
     // One of the variants
     std::string value;
     ZSet zset;
+    HMap hmap;
 
     // For ttl heap
     size_t heap_idx = -1;

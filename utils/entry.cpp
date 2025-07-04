@@ -22,6 +22,9 @@ static void entry_del_sync(Entry* entry) {
     if (entry->type == T_ZSET) {
         zset_clear(&entry->zset);
     }
+    if (entry->type == T_HSET) {
+        hm_clear(&entry->hmap);
+    }
     delete entry;
 }
 
@@ -33,7 +36,14 @@ void entry_del(Entry *entry) {
     // Unlink from data structures
     ent_rem_ttl(entry);
 
-    size_t size = entry->type == T_ZSET ? hm_size(&entry->zset.hmap) : 0;
+    size_t size = 0;
+    if (entry->type == T_ZSET) {
+        size = std::max(size, hm_size(&entry->zset.hmap));
+    }
+    if (entry->type == T_HSET) {
+        size = std::max(size, hm_size(&entry->hmap));
+    }
+
     const size_t LARGE_SIZE_TRESHOLD = 1000;
     if (size >= LARGE_SIZE_TRESHOLD) {
         threadpool_produce(&global_data.threadpool, &entry_del_wrapper, entry);
