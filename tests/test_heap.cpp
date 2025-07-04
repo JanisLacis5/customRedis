@@ -3,7 +3,7 @@
 #include <map>
 #include <bits/stdint-uintn.h>
 
-#include "../heap.h"
+#include "../data_structures/heap.h"
 
 struct Data {
     size_t heap_idx = -1;

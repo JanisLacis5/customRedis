@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <cstdio>
 
-#include "../avl_tree.h"
+#include "../data_structures/avl_tree.h"
 
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 

@@ -1,8 +1,8 @@
 #ifndef ENTRY_H
 #define ENTRY_H
 
-#include "../zset.h"
-#include "../hashmap.h"
+#include "../data_structures/zset.h"
+#include "../data_structures/hashmap.h"
 
 enum EntryTypes {
     T_STR = 0,

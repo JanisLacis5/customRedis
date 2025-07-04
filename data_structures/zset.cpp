@@ -1,8 +1,8 @@
 #include <string.h>
 
-#include "redis_functions.h"
+#include "../redis_functions.h"
 #include "zset.h"
-#include "utils/common.h"
+#include "../utils/common.h"
 
 struct HKey {
     HNode node;

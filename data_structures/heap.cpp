@@ -1,5 +1,5 @@
 #include <vector>
-#include "heap.h"
+#include "../data_structures/heap.h"
 
 #include <algorithm>
 

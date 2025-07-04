@@ -1,8 +1,8 @@
 #ifndef REDIS_FUNCTIONS_H
 #define REDIS_FUNCTIONS_H
 
-#include "hashmap.h"
-#include "heap.h"
+#include "data_structures/hashmap.h"
+#include "data_structures/heap.h"
 #include "server.h"
 
 // Hashmap functions

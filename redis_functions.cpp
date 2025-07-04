@@ -2,9 +2,9 @@
 
 #include "redis_functions.h"
 #include "buffer_funcs.h"
-#include "hashmap.h"
-#include "heap.h"
-#include "zset.h"
+#include "data_structures/hashmap.h"
+#include "data_structures/heap.h"
+#include "data_structures/zset.h"
 #include "out_helpers.h"
 #include "server.h"
 #include "utils/common.h"
