@@ -127,27 +127,34 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 
 # Command Reference
 ## String commands
-| Command | Syntax | Description |
-|---------|--------|-------------|
-| SET     | `SET <key> <value>` | Store a string value |
+| Command | Syntax              | Description             |
+|---------|---------------------|-------------------------|
+| SET     | `SET <key> <value>` | Store a string value    |
 | GET     | `GET <key>`         | Retrieve a string value |
-| DEL     | `DEL <key>`         | Delete a key |
-| KEYS    | `KEYS`              | List all keys |
+| DEL     | `DEL <key>`         | Delete a key            |
+| KEYS    | `KEYS`              | List all keys           |
+
+## HSet commands
+| Command | Syntax                                 | Description                                                                                                         |
+|---------|----------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| HSET    | `HSET key field value [field value …]` | Set one or more `field`→`value` pairs in the hash stored at `key`. Returns the number of new fields added.          |
+| HGET    | `HGET key field`                       | Get the value associated with `field` in the hash at `key`. Returns the value, or `nil` if the field doesn’t exist. |
+| HDEL    | `HDEL key field [field …]`             | Remove one or more `field`s from the hash at `key`. Returns the number of fields that were removed.                 |
+| HGETALL | `HGETALL key`                          | Retrieve all fields and values in the hash at `key`. Returns a list: `field1, value1, field2, value2, …`.           |
 
 ## Sorted Set commands
-| Command | Syntax | Description |
-|---------|--------|-------------|
-| ZADD    | `ZADD <key> <score> <member>` | Add or update a member with a score |
-| ZSCORE  | `ZSCORE <key> <member>`       | Get the score of a member |
-| ZREM    | `ZREM <key> <member>`         | Remove a member from a sorted set |
+| Command | Syntax                                                   | Description                         |
+|---------|----------------------------------------------------------|-------------------------------------|
+| ZADD    | `ZADD <key> <score> <member>`                            | Add or update a member with a score |
+| ZSCORE  | `ZSCORE <key> <member>`                                  | Get the score of a member           |
+| ZREM    | `ZREM <key> <member>`                                    | Remove a member from a sorted set   |
 | ZQUERY  | `ZQUERY <key> BY <min\max> <score> OFFSET <n> LIMIT <m>` | Query a score range with pagination |
 
-
 ## Expiration commands
-| Command | Syntax | Description |
-|---------|--------|-------------|
-| EXPIRE  | `EXPIRE <key> <seconds>` | Set a key’s expiration in seconds |
-| TTL     | `TTL <key>`              | Get remaining TTL in seconds |
+| Command | Syntax                   | Description                               |
+|---------|--------------------------|-------------------------------------------|
+| EXPIRE  | `EXPIRE <key> <seconds>` | Set a key’s expiration in seconds         |
+| TTL     | `TTL <key>`              | Get remaining TTL in seconds              |
 | PERSIST | `PERSIST <key>`          | Remove expiration to make a key permanent |
 
 # Limitations

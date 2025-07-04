@@ -4,13 +4,13 @@
 
 Adding the other “built-in” Redis types will instantly beef up your feature set:
 
-| Data Type  | Commands to Add                        | Rough Effort |
-|------------|----------------------------------------|--------------|
-| Hashes     | HSET / HGET / HDEL / HGETALL           | Easy         |
-| Lists      | LPUSH / RPUSH / LPOP / RPOP / LRANGE   | Easy–Medium  |
-| Sets       | SADD / SREM / SMEMBERS / SCARD         | Easy         |
-| Bitmaps    | SETBIT / GETBIT / BITCOUNT             | Medium       |
-| HyperLogLog| PFADD / PFCOUNT                        | Medium       |
+| Data Type   | Commands to Add                      | Rough Effort | Done? |
+|-------------|--------------------------------------|--------------|-------|
+| Hashes      | HSET / HGET / HDEL / HGETALL         | Easy         | YES   |
+| Lists       | LPUSH / RPUSH / LPOP / RPOP / LRANGE | Easy–Medium  | NO    |
+| Sets        | SADD / SREM / SMEMBERS / SCARD       | Easy         | NO    |
+| Bitmaps     | SETBIT / GETBIT / BITCOUNT           | Medium       | NO    |
+| HyperLogLog | PFADD / PFCOUNT                      | Medium       | NO    |
 
 **Why?** These are the staple Redis types. Even basic implementations (e.g. a `std::unordered_map<string,string>` for hashes, a `deque<string>` for lists, a `bitset` or `vector<bool>` for bitmaps) demonstrate mastery of C++ data structures and will make your clone feel *complete*.
 
