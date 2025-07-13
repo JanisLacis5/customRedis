@@ -1,6 +1,6 @@
 ## TODO List
 
-1. **More Core Data-Type Commands (Low Effort / Big Resume Impact)**
+1. **More Core Data-Type Commands (Low Effort)**
 
 Adding the other “built-in” Redis types will instantly beef up your feature set:
 
@@ -16,7 +16,7 @@ Adding the other “built-in” Redis types will instantly beef up your feature 
 
 ---
 
-2. **Scripting & Transactions (Medium Effort / Big Leverage)**
+2. **Scripting & Transactions (Medium Effort)**
 
 Once you have multiple types, you can add:
 
@@ -58,7 +58,7 @@ So far everything lives in RAM. To keep data across restarts:
     - Support “rewrite”/compaction to prevent unbounded growth.
     - Configurable fsync via `CONFIG SET appendfsync {always, everysec, no}`.
 
-**Why?** Durability is a hallmark of production­-ready servers.
+**Why?** Durability is a hallmark of production-ready servers.
 
 ---
 

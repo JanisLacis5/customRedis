@@ -165,6 +165,7 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
 }
 
 static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
+    // GENERAL
     if (cmd.size() == 2 && cmd[0] == "get") {
         do_get(cmd[1], conn);
     }
@@ -177,16 +178,8 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     else if (cmd.size() == 1 && cmd[0] == "keys") {
         do_keys(conn);
     }
-    else if (cmd.size() == 4 && cmd[0] == "zadd") {
-        double score = std::stod(cmd[2]);
-        do_zadd(conn, cmd[1], score, cmd[3]);
-    }
-    else if (cmd.size() == 3 && cmd[0] == "zscore") {
-        do_zscore(conn, cmd[1], cmd[2]);
-    }
-    else if (cmd.size() == 3 && cmd[0] == "zrem") {
-        do_zrem(conn, cmd[1], cmd[2]);
-    }
+
+    // HASH SET
     else if (cmd.size() >= 4 && (cmd.size() & 1) == 0 && cmd[0] == "hset") {
         do_hset(conn, cmd);
     }
@@ -199,6 +192,8 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     else if (cmd.size() >= 3 && cmd[0] == "hdel") {
         do_hdel(conn, cmd);
     }
+
+    // TIME TO LIVE
     else if (cmd.size() == 3 && cmd[0] == "expire") {
         uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
         do_expire(conn, cmd[1], ttl_ms);
@@ -208,6 +203,18 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     }
     else if (cmd.size() == 2 && cmd[0] == "persist") {
         do_persist(conn, cmd[1]);
+    }
+
+    // ZSETS
+    else if (cmd.size() == 4 && cmd[0] == "zadd") {
+        double score = std::stod(cmd[2]);
+        do_zadd(conn, cmd[1], score, cmd[3]);
+    }
+    else if (cmd.size() == 3 && cmd[0] == "zscore") {
+        do_zscore(conn, cmd[1], cmd[2]);
+    }
+    else if (cmd.size() == 3 && cmd[0] == "zrem") {
+        do_zrem(conn, cmd[1], cmd[2]);
     }
     else if (cmd[0] == "zquery") {
         double score = std::stod(cmd[2]);
@@ -222,6 +229,29 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
             limit
         );
     }
+
+    // TODO: implement
+    // LINKED LIST
+    else if (cmd[0] == "lpush") {}
+    else if (cmd[0] == "rpush") {}
+    else if (cmd[0] == "lpop") {}
+    else if (cmd[0] == "rpop") {}
+    else if (cmd[0] == "lrange") {}
+
+    // SET
+    else if (cmd[0] == "sadd") {}
+    else if (cmd[0] == "srem") {}
+    else if (cmd[0] == "smembers") {}
+    else if (cmd[0] == "scard") {}
+
+    // BITMAP
+    else if (cmd[0] == "setbit") {}
+    else if (cmd[0] == "getbit") {}
+    else if (cmd[0] == "bitcount") {}
+
+    // HYPERLOGLOG
+    else if (cmd[0] == "pfadd") {}
+    else if (cmd[0] == "pfcount") {}
     else {
         out_err(conn, "unknown command");
     }
