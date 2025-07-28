@@ -64,6 +64,24 @@ void do_set(Conn *conn, std::string &key, std::string &value) {
     buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
+// void do_set(Conn *conn, std::string &key, std::string &value) {
+//     HNode tmp;
+//     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
+//
+//     HNode *node = hm_lookup(&global_data.db, &tmp, &entry_eq);
+//     if (node) {
+//         container_of(node, Entry, node)->value = value;
+//     }
+//     else {
+//         HNode *new_node = new HNode();
+//         new_node->val = value;
+//         new_node->hcode = str_hash((uint8_t*)key.data(), key.size());
+//         hm_insert(&global_data.db, new_node);
+//     }
+//     buf_append_u8(conn->outgoing, TAG_NULL);
+// }
+
+
 void do_del(Conn *conn, std::string &key) {
     Entry entry;
     entry.key = key;

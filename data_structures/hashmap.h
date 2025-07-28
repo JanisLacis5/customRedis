@@ -9,6 +9,7 @@
 struct HNode {
     HNode *next = NULL;
     uint64_t hcode = 0; // hash value
+    // std::string val = "";
 };
 
 struct HTab {
