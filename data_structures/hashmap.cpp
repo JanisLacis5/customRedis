@@ -21,7 +21,7 @@ void hm_rehash(HMap *hmap) {
 }
 
 // Returns the &P->next where P is the previous node before `node`
-HNode** ht_lookup(HTab *htab, HNode *node, bool (*eq)(HNode*, HNode*)) {
+HNode** ht_lookup(HTab *htab, HNode *node) {
     if (!htab->tab) {
         return NULL;
     }
@@ -30,7 +30,7 @@ HNode** ht_lookup(HTab *htab, HNode *node, bool (*eq)(HNode*, HNode*)) {
     HNode **slot = &htab->tab[pos];
     while (*slot) {
         HNode *curr = *slot;
-        if (curr->hcode == node->hcode && eq(curr, node)) {
+        if (curr->hcode == node->hcode && curr->key == node->key) {
             return slot;
         }
         slot = &curr->next;
@@ -39,10 +39,10 @@ HNode** ht_lookup(HTab *htab, HNode *node, bool (*eq)(HNode*, HNode*)) {
     return NULL;
 }
 
-HNode* hm_lookup(HMap *hmap, HNode* key, bool (*eq)(HNode*, HNode*)) {
-    HNode **slot = ht_lookup(&hmap->older, key, eq);
+HNode* hm_lookup(HMap *hmap, HNode* key) {
+    HNode **slot = ht_lookup(&hmap->older, key);
     if (!slot) {
-        slot = ht_lookup(&hmap->newer, key, eq);
+        slot = ht_lookup(&hmap->newer, key);
     }
 
     return slot ? *slot : NULL;
@@ -59,11 +59,11 @@ HNode* ht_delete(HTab* htab, HNode **from) {
 }
 
 HNode* hm_delete(HMap* hmap, HNode* key, bool (*eq)(HNode*, HNode*)) {
-    HNode **slot = ht_lookup(&hmap->older, key, eq);
+    HNode **slot = ht_lookup(&hmap->older, key);
     if (slot) {
         return ht_delete(&hmap->older, slot);
     }
-    slot = ht_lookup(&hmap->newer, key, eq);
+    slot = ht_lookup(&hmap->newer, key);
     if (slot) {
         return ht_delete(&hmap->newer, slot);
     }

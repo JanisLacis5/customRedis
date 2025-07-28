@@ -112,7 +112,7 @@ ZNode* zset_lookup(ZSet* zset, std::string& key) {
     hkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     // Do a hashmap lookup
-    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, &hcmp);
+    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node);
     return hnode ? container_of(hnode, ZNode, h_node) : NULL;
 }
 

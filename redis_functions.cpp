@@ -23,7 +23,7 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
     l.key = key;
     l.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *zset_hnode = hm_lookup(hmap, &l.node, &entry_eq);
+    HNode *zset_hnode = hm_lookup(hmap, &l.node);
     if (!zset_hnode) {
         return (ZSet*)&empty;
     }
@@ -33,53 +33,38 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
 }
 
 void do_get(std::string &key, Conn *conn) {
-    Entry entry;
-    entry.key = key;
-    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-    HNode *node = hm_lookup(&global_data.db, &entry.node, entry_eq);
+    HNode tmp;
+    tmp.key = key;
+    tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
+    HNode *node = hm_lookup(&global_data.db, &tmp);
     if (!node) {
         out_not_found(conn);
     }
     else {
-        std::string &val = container_of(node, Entry, node)->value;
-        out_str(conn, val.data(), val.size());
+        out_str(conn, node->val.data(), node->val.size());
     }
 }
 
-void do_set(Conn *conn, std::string &key, std::string &value) {
-    Entry entry;
-    entry.key = key;
-    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
 
-    HNode *node = hm_lookup(&global_data.db, &entry.node, &entry_eq);
+void do_set(Conn *conn, std::string &key, std::string &value) {
+    HNode tmp;
+    tmp.key = key;
+    tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
+
+    HNode *node = hm_lookup(&global_data.db, &tmp);
     if (node) {
         container_of(node, Entry, node)->value = value;
     }
     else {
-        Entry *e = new_entry(key, T_STR);
-        e->value = value;
-        hm_insert(&global_data.db, &e->node);
+        HNode *new_node = new HNode();
+        new_node->val = value;
+        new_node->key = key;
+        new_node->hcode = str_hash((uint8_t*)key.data(), key.size());
+        hm_insert(&global_data.db, new_node);
     }
     buf_append_u8(conn->outgoing, TAG_NULL);
 }
-
-// void do_set(Conn *conn, std::string &key, std::string &value) {
-//     HNode tmp;
-//     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
-//
-//     HNode *node = hm_lookup(&global_data.db, &tmp, &entry_eq);
-//     if (node) {
-//         container_of(node, Entry, node)->value = value;
-//     }
-//     else {
-//         HNode *new_node = new HNode();
-//         new_node->val = value;
-//         new_node->hcode = str_hash((uint8_t*)key.data(), key.size());
-//         hm_insert(&global_data.db, new_node);
-//     }
-//     buf_append_u8(conn->outgoing, TAG_NULL);
-// }
 
 
 void do_del(Conn *conn, std::string &key) {
@@ -111,7 +96,7 @@ void do_zadd(Conn *conn, std::string &keyspace_key, double &score, std::string &
     Lookup l;
     l.node.hcode = str_hash((uint8_t*)keyspace_key.data(), keyspace_key.size());
     l.key = keyspace_key;
-    HNode *node = hm_lookup(&global_data.db, &l.node, &entry_eq);
+    HNode *node = hm_lookup(&global_data.db, &l.node);
 
     Entry *entry = NULL;
     if (!node) {
@@ -205,7 +190,7 @@ void do_expire(Conn *conn, std::string &key, uint32_t ttl_ms) {
     lkey.key = key;
     lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node, &entry_eq);
+    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node);
     if (!entry_hnode) {
         printf("here\n");
         return out_null(conn);
@@ -221,7 +206,7 @@ void do_ttl(Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t 
     lkey.key = key;
     lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node, &entry_eq);
+    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node);
     if (!entry_hnode) {
         return out_null(conn);
     }
@@ -236,7 +221,7 @@ void do_persist(Conn *conn, std::string &key) {
     lkey.key = key;
     lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node, &entry_eq);
+    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node);
     if (!entry_hnode) {
         return out_null(conn);
     }
@@ -251,7 +236,7 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
     key.key = cmd[1];
     key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
-    HNode *hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+    HNode *hnode = hm_lookup(&global_data.db, &key.node);
     Entry *ent = NULL;
     if (!hnode) {
         ent = new_entry(cmd[1], T_HSET);
@@ -270,7 +255,7 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
     Lookup ek;
     ek.key = cmd[2];
     ek.node.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
-    HNode *node = hm_lookup(&ent->hmap, &ek.node, &entry_eq);
+    HNode *node = hm_lookup(&ent->hmap, &ek.node);
 
     if (node) {
         container_of(node, Entry, node)->value = cmd[3];
@@ -290,7 +275,7 @@ void do_hget(Conn *conn, std::vector<std::string> &cmd) {
     key.key = cmd[1];
     key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
-    HNode *hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+    HNode *hnode = hm_lookup(&global_data.db, &key.node);
     if (!hnode) {
         return out_null(conn);
     }
@@ -308,7 +293,7 @@ void do_hget(Conn *conn, std::vector<std::string> &cmd) {
     Lookup ek;
     ek.key = cmd[2];
     ek.node.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
-    HNode *node = hm_lookup(&ent->hmap, &ek.node, &entry_eq);
+    HNode *node = hm_lookup(&ent->hmap, &ek.node);
 
     if (node) {
         std::string rv = container_of(node, Entry, node)->value;
@@ -323,7 +308,7 @@ void do_hdel(Conn *conn, std::vector<std::string> &cmd) {
     key.key = cmd[1];
     key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
-    HNode *global_hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+    HNode *global_hnode = hm_lookup(&global_data.db, &key.node);
     if (!global_hnode) {
         return out_null(conn);
     }
@@ -360,7 +345,7 @@ void do_hgetall(Conn *conn, std::vector<std::string> &cmd) {
     key.key = cmd[1];
     key.node.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
-    HNode *global_hnode = hm_lookup(&global_data.db, &key.node, &entry_eq);
+    HNode *global_hnode = hm_lookup(&global_data.db, &key.node);
     if (!global_hnode) {
         return out_null(conn);
     }
