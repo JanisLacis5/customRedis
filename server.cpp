@@ -109,7 +109,7 @@ static void process_timers() {
     size_t curr_iterations = 0;
     while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
         Entry *ent = container_of(global_data.ttl_heap[0].pos_ref, Entry, heap_idx);
-        hm_delete(&global_data.db, &ent->node, &hnode_same);
+        hm_delete(&global_data.db, &ent->node);
         entry_del(ent);
         if (curr_iterations++ >= MAX_TTL_TASKS) {
             break;

@@ -58,7 +58,7 @@ HNode* ht_delete(HTab* htab, HNode **from) {
     return to_delete;
 }
 
-HNode* hm_delete(HMap* hmap, HNode* key, bool (*eq)(HNode*, HNode*)) {
+HNode* hm_delete(HMap* hmap, HNode* key) {
     HNode **slot = ht_lookup(&hmap->older, key);
     if (slot) {
         return ht_delete(&hmap->older, slot);

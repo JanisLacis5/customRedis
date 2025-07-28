@@ -68,14 +68,11 @@ void do_set(Conn *conn, std::string &key, std::string &value) {
 
 
 void do_del(Conn *conn, std::string &key) {
-    Entry entry;
-    entry.key = key;
-    entry.node.hcode = str_hash((uint8_t*)entry.key.data(), entry.key.size());
-    HNode *node = hm_delete(&global_data.db, &entry.node, entry_eq);
-    if (!node) {
-        entry_del(container_of(node, Entry, node));
-    }
+    HNode tmp;
+    tmp.key = key;
+    tmp.hcode = str_hash((uint8_t*)tmp.key.data(), tmp.key.size());
 
+    hm_delete(&global_data.db, &tmp);
     buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
@@ -323,7 +320,7 @@ void do_hdel(Conn *conn, std::vector<std::string> &cmd) {
     Lookup ek;
     ek.key = cmd[2];
     ek.node.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
-    HNode *node = hm_delete(&ent->hmap, &ek.node, &entry_eq);
+    HNode *node = hm_delete(&ent->hmap, &ek.node);
 
     // Delete value
     if (node) {
@@ -333,7 +330,7 @@ void do_hdel(Conn *conn, std::vector<std::string> &cmd) {
 
     // Delete hmap entry if it's hmap is empty
     if (hm_size(&ent->hmap) == 0) {
-        hm_delete(&global_data.db, &ent->node, &entry_eq);
+        hm_delete(&global_data.db, &ent->node);
         entry_del(ent);
     }
     out_null(conn);

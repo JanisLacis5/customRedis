@@ -27,7 +27,7 @@ struct HMap {
 
 HNode* hm_lookup(HMap *hmap, HNode *key);
 void hm_insert(HMap *hmap, HNode *node);
-HNode* hm_delete(HMap *hmap, HNode *key, bool (*eq)(HNode*, HNode*));
+HNode* hm_delete(HMap *hmap, HNode *key);
 void hm_clear(HMap *hmap);
 size_t hm_size(HMap *hmap);
 void hm_keys(HMap* hmap, bool (*f)(HNode*, std::vector<std::string> &), std::vector<std::string> &arg);
