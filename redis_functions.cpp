@@ -10,11 +10,6 @@
 #include "utils/common.h"
 #include "utils/entry.h"
 
-static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
-    keys.push_back(node->key);
-    return true;
-}
-
 static const ZSet empty;
 static ZSet* find_zset(HMap *hmap, std::string &key) {
     // Find the zset
@@ -53,7 +48,7 @@ void do_set(Conn *conn, std::string &key, std::string &value) {
 
     HNode *node = hm_lookup(&global_data.db, &tmp);
     if (node) {
-        container_of(node, Entry, node)->value = value;
+        node->val = value;
     }
     else {
         HNode *new_node = new HNode();
@@ -77,7 +72,7 @@ void do_del(Conn *conn, std::string &key) {
 
 void do_keys(Conn *conn) {
     std::vector<std::string> keys;
-    hm_keys(&global_data.db, &hm_keys_cb, keys);
+    hm_keys(&global_data.db, keys);
 
     out_arr(conn, keys.size());
     for (std::string &key: keys) {
@@ -348,7 +343,7 @@ void do_hgetall(Conn *conn, std::vector<std::string> &cmd) {
     Entry *hmap_e = container_of(global_hnode, Entry, node);
 
     std::vector<std::string> keys;
-    hm_keys(&hmap_e->hmap, &hm_keys_cb, keys);
+    hm_keys(&hmap_e->hmap, keys);
 
     out_arr(conn, keys.size());
     for (std::string &key: keys) {
