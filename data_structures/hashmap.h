@@ -6,12 +6,7 @@
 #include <string>
 #include <vector>
 
-struct HNode {
-    HNode *next = NULL;
-    uint64_t hcode = 0; // hash value
-    std::string key = "";
-    std::string val = "";
-};
+struct HNode;
 
 struct HTab {
     HNode **tab = NULL;
@@ -24,6 +19,18 @@ struct HMap {
     HTab newer;
     size_t migrate_pos = 0;
 };
+
+struct HNode {
+    HNode *next = NULL;
+    uint64_t hcode = 0; // hash value
+    std::string key = "";
+    uint32_t type = 100;
+
+    // Possible values
+    std::string val = "";
+    HMap hmap;
+};
+
 
 HNode* hm_lookup(HMap *hmap, HNode *key);
 void hm_insert(HMap *hmap, HNode *node);
