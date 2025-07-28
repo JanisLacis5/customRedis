@@ -11,8 +11,7 @@
 #include "utils/entry.h"
 
 static bool hm_keys_cb(HNode *node, std::vector<std::string> &keys) {
-    std::string key = container_of(node, Entry, node)->key;
-    keys.push_back(key);
+    keys.push_back(node->key);
     return true;
 }
 
