@@ -22,7 +22,6 @@
 #include "data_structures/heap.h"
 #include "out_helpers.h"
 #include "utils/common.h"
-#include "utils/entry.h"
 #include "threadpool.h"
 
 const size_t MAX_MESSAGE_LEN = 32 << 20;
@@ -40,7 +39,7 @@ static void fd_set_non_blocking(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 }
 
-static uint64_t get_curr_ms() {
+uint64_t get_curr_ms() {
     struct timespec tv = {0, 0};
     int err = clock_gettime(CLOCK_MONOTONIC, &tv);
     if (err) {
@@ -108,12 +107,38 @@ static void process_timers() {
     // Entry timeouts
     size_t curr_iterations = 0;
     while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
-        Entry *ent = container_of(global_data.ttl_heap[0].pos_ref, Entry, heap_idx);
-        hm_delete(&global_data.db, &ent->node);
-        entry_del(ent);
+        HNode *hnode = container_of(global_data.ttl_heap[0].pos_ref, HNode, heap_idx);
+        printf("%s, %s\n", hnode->key.data(), hnode->val.data());
+
+        hm_delete(&global_data.db, hnode);
+        rem_ttl(hnode);
+
         if (curr_iterations++ >= MAX_TTL_TASKS) {
             break;
         }
+    }
+}
+
+void set_ttl(HNode *node, uint64_t ttl) {
+    HeapNode hn;
+    hn.val = get_curr_ms() + ttl;
+    hn.pos_ref = &node->heap_idx;
+
+    global_data.ttl_heap.push_back(hn);
+    heap_fix(global_data.ttl_heap, global_data.ttl_heap.size() - 1);
+}
+
+void rem_ttl(HNode *node) {
+    if (node->heap_idx < 0 || node->heap_idx >= global_data.ttl_heap.size()) {
+        return;
+    }
+
+    // Remove from the heap
+    global_data.ttl_heap[node->heap_idx] = global_data.ttl_heap.back();
+    global_data.ttl_heap.pop_back();
+
+    if (node->heap_idx < global_data.ttl_heap.size()) {
+        heap_fix(global_data.ttl_heap, node->heap_idx);
     }
 }
 
@@ -383,29 +408,6 @@ static void handle_write(Conn *conn) {
         dlist_deatach(&conn->write_timeout);
         dlist_insert_before(&global_data.read_list, &conn->read_timeout);
         conn->last_read_ms = get_curr_ms();
-    }
-}
-
-void ent_set_ttl(Entry *entry, uint64_t ttl) {
-    HeapNode heap_node;
-    heap_node.val = get_curr_ms() + ttl;
-    heap_node.pos_ref = &entry->heap_idx;
-
-    global_data.ttl_heap.push_back(heap_node);
-    heap_fix(global_data.ttl_heap, global_data.ttl_heap.size() - 1);
-}
-
-void ent_rem_ttl(Entry *entry) {
-    if (entry->heap_idx < 0 || entry->heap_idx >= global_data.ttl_heap.size()) {
-        return;
-    }
-
-    // Remove from the heap
-    global_data.ttl_heap[entry->heap_idx] = global_data.ttl_heap.back();
-    global_data.ttl_heap.pop_back();
-
-    if (entry->heap_idx < global_data.ttl_heap.size()) {
-        heap_fix(global_data.ttl_heap, entry->heap_idx);
     }
 }
 

@@ -22,8 +22,6 @@ add_library(customRedis STATIC
         data_structures/zset.h
         data_structures/heap.cpp
         data_structures/heap.h
-        utils/entry.cpp
-        utils/entry.h
         utils/common.h
 )
 target_include_directories(customRedis PUBLIC

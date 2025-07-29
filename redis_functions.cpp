@@ -172,47 +172,44 @@ void do_zrangequery(
 }
 
 void do_expire(Conn *conn, std::string &key, uint32_t ttl_ms) {
-    Lookup lkey;
-    lkey.key = key;
-    lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+    HNode tmp;
+    tmp.key = key;
+    tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node);
-    if (!entry_hnode) {
-        printf("here\n");
+    HNode *hnode = hm_lookup(&global_data.db, &tmp);
+    if (!hnode) {
         return out_null(conn);
     }
 
-    Entry *entry = container_of(entry_hnode, Entry, node);
-    ent_set_ttl(entry, ttl_ms);
+    set_ttl(hnode, ttl_ms);
     out_null(conn);
 }
 
 void do_ttl(Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t curr_ms) {
-    Lookup lkey;
-    lkey.key = key;
-    lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+    HNode tmp;
+    tmp.key = key;
+    tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node);
-    if (!entry_hnode) {
+    HNode *hnode = hm_lookup(&global_data.db, &tmp);
+    if (!hnode) {
         return out_null(conn);
     }
 
-    Entry *entry = container_of(entry_hnode, Entry, node);
-    uint32_t ttl = (heap[entry->heap_idx].val - curr_ms) / 1000;
+    uint32_t ttl = (heap[hnode->heap_idx].val - curr_ms) / 1000;
     out_int(conn, ttl);
 }
 
 void do_persist(Conn *conn, std::string &key) {
-    Lookup lkey;
-    lkey.key = key;
-    lkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+    HNode tmp;
+    tmp.key = key;
+    tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *entry_hnode = hm_lookup(&global_data.db, &lkey.node);
-    if (!entry_hnode) {
+    HNode *hnode = hm_lookup(&global_data.db, &tmp);
+    if (!hnode) {
         return out_null(conn);
     }
 
-    ent_rem_ttl(container_of(entry_hnode, Entry, node));
+    rem_ttl(hnode);
     out_null(conn);
 }
 

@@ -28,6 +28,7 @@ struct HNode {
     uint64_t hcode = 0; // hash value
     std::string key = "";
     uint32_t type = 100;
+    size_t heap_idx = -1;
 
     // Possible values
     std::string val = "";

@@ -1,13 +1,15 @@
-#include "hashmap.h"
 #include <assert.h>
 #include <cstdlib>
 
-#include "utils/entry.h"
+#include "hashmap.h"
+
+#include "server.h"
+#include "zset.h"
 
 const size_t MAX_LOAD_FACTOR = 8;
 const size_t REHASHING_WORK = 128;
 
-void h_init(HTab *htab, size_t n) {
+static void h_init(HTab *htab, size_t n) {
     // Assert that n is a power of 2
     assert(n > 0 && ((n-1) & n) == 0);
 
@@ -16,14 +18,14 @@ void h_init(HTab *htab, size_t n) {
     htab->size = 0;
 }
 
-void hm_rehash(HMap *hmap) {
+static void hm_rehash(HMap *hmap) {
     hmap->older = hmap->newer;
     h_init(&hmap->newer, 2 * (hmap->older.mask + 1));
     hmap->migrate_pos = 0;
 }
 
 // Returns the &P->next where P is the previous node before `node`
-HNode** ht_lookup(HTab *htab, HNode *node) {
+static HNode** ht_lookup(HTab *htab, HNode *node) {
     if (!htab->tab) {
         return NULL;
     }
@@ -31,48 +33,60 @@ HNode** ht_lookup(HTab *htab, HNode *node) {
     size_t pos = node->hcode & htab->mask;
     HNode **slot = &htab->tab[pos];
     while (*slot) {
+        printf("hey:) %p\n", slot);
         HNode *curr = *slot;
         if (curr->hcode == node->hcode && curr->key == node->key) {
             return slot;
         }
         slot = &curr->next;
     }
+    printf("did not find\n");
 
     return NULL;
 }
 
-HNode* hm_lookup(HMap *hmap, HNode* key) {
-    HNode **slot = ht_lookup(&hmap->older, key);
-    if (!slot) {
-        slot = ht_lookup(&hmap->newer, key);
+static void hn_del_sync(HNode* hnode) {
+    if (hnode->type == T_ZSET) {
+        zset_clear(hnode->zset);
     }
-
-    return slot ? *slot : NULL;
+    if (hnode->type == T_HSET) {
+        hm_clear(&hnode->hmap);
+    }
+    delete hnode;
 }
 
-HNode* ht_delete(HTab* htab, HNode **from) {
+static void hn_del_wrapper(void *arg) {
+    hn_del_sync((HNode*)arg);
+}
+
+static HNode* ht_delete(HTab* htab, HNode **from) {
     HNode *to_delete = *from;
     if (!to_delete) {
         return NULL;
     }
     *from = to_delete->next;
     htab->size--;
+
+    size_t size = 0;
+    if (to_delete->type == T_ZSET) {
+        size = std::max(size, hm_size(&to_delete->zset->hmap));
+    }
+    if (to_delete->type == T_HSET) {
+        size = std::max(size, hm_size(&to_delete->hmap));
+    }
+
+    const size_t LARGE_SIZE_TRESHOLD = 1000;
+    if (size >= LARGE_SIZE_TRESHOLD) {
+        threadpool_produce(&global_data.threadpool, &hn_del_wrapper, to_delete);
+    }
+    else {
+        hn_del_sync(to_delete);
+    }
+
     return to_delete;
 }
 
-HNode* hm_delete(HMap* hmap, HNode* key) {
-    HNode **slot = ht_lookup(&hmap->older, key);
-    if (slot) {
-        return ht_delete(&hmap->older, slot);
-    }
-    slot = ht_lookup(&hmap->newer, key);
-    if (slot) {
-        return ht_delete(&hmap->newer, slot);
-    }
-    return NULL;
-}
-
-void ht_insert(HTab *htab, HNode *node) {
+static void ht_insert(HTab *htab, HNode *node) {
     size_t pos = node->hcode & htab->mask;
     HNode *next = htab->tab[pos]; // issue
     node->next = next;
@@ -80,7 +94,7 @@ void ht_insert(HTab *htab, HNode *node) {
     htab->size++;
 }
 
-void hm_rehash_help(HMap *hmap) {
+static void hm_rehash_help(HMap *hmap) {
     size_t nwork = 0;
     while (nwork < REHASHING_WORK && hmap->older.size > 0) {
         HNode **slot = &hmap->older.tab[hmap->migrate_pos];
@@ -95,6 +109,42 @@ void hm_rehash_help(HMap *hmap) {
         free(hmap->older.tab);
         hmap->older = HTab{};
     }
+}
+
+static bool h_foreach(HTab *htab, std::vector<std::string> &arg) {
+    for (size_t i = 0; i <= htab->mask; i++) {
+        if (!htab->tab) {
+            continue;
+        }
+        HNode *curr = htab->tab[i];
+        while (curr) {
+            arg.push_back(curr->key);
+            curr = curr->next;
+        }
+    }
+    return true;
+}
+
+HNode* hm_lookup(HMap *hmap, HNode* key) {
+    HNode **slot = ht_lookup(&hmap->older, key);
+    if (!slot) {
+        slot = ht_lookup(&hmap->newer, key);
+    }
+
+    return slot ? *slot : NULL;
+}
+
+HNode* hm_delete(HMap* hmap, HNode* key) {
+    HNode **slot = ht_lookup(&hmap->older, key);
+    if (slot) {
+        return ht_delete(&hmap->older, slot);
+    }
+    slot = ht_lookup(&hmap->newer, key);
+    if (slot) {
+        return ht_delete(&hmap->newer, slot);
+    }
+    printf("fuck me\n");
+    return NULL;
 }
 
 void hm_insert(HMap* hmap, HNode* node) {
@@ -112,7 +162,6 @@ void hm_insert(HMap* hmap, HNode* node) {
     hm_rehash_help(hmap);
 }
 
-
 void hm_clear(HMap* hmap) {
     free(hmap->older.tab);
     free(hmap->newer.tab);
@@ -121,20 +170,6 @@ void hm_clear(HMap* hmap) {
 
 size_t hm_size(HMap* hmap) {
     return hmap->newer.size + hmap->older.size;
-}
-
-bool h_foreach(HTab *htab, std::vector<std::string> &arg) {
-    for (size_t i = 0; i <= htab->mask; i++) {
-        if (!htab->tab) {
-            continue;
-        }
-        HNode *curr = htab->tab[i];
-        while (curr) {
-            arg.push_back(curr->key);
-            curr = curr->next;
-        }
-    }
-    return true;
 }
 
 void hm_keys(HMap* hmap, std::vector<std::string> &arg) {

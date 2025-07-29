@@ -3,8 +3,8 @@
 
 #include "dlist.h"
 #include "threadpool.h"
+#include "data_structures/hashmap.h"
 #include "data_structures/heap.h"
-#include "utils/entry.h"
 
 struct Conn {
     // fd returned by poll() is non-negative
@@ -34,7 +34,8 @@ struct {
     std::vector<HeapNode> ttl_heap;
 } global_data;
 
-void ent_rem_ttl(Entry *entry);
-void ent_set_ttl(Entry *entry, uint64_t ttl);
+uint64_t get_curr_ms();
+void set_ttl(HNode *node, uint64_t ttl);
+void rem_ttl(HNode *node);
 
 #endif
