@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <cstdlib>
 
+#include "utils/entry.h"
+
 const size_t MAX_LOAD_FACTOR = 8;
 const size_t REHASHING_WORK = 128;
 
@@ -138,6 +140,17 @@ bool h_foreach(HTab *htab, std::vector<std::string> &arg) {
 void hm_keys(HMap* hmap, std::vector<std::string> &arg) {
     h_foreach(&hmap->newer, arg);
     h_foreach(&hmap->older, arg);
+}
+
+HNode* new_node(std::string& key, uint32_t type) {
+    HNode *node = new HNode();
+    node->key = key;
+    node->hcode = str_hash((uint8_t*)key.data(), key.size());
+    node->type = type;
+    if (type == T_ZSET) {
+        node->zset = new ZSet();
+    }
+    return node;
 }
 
 

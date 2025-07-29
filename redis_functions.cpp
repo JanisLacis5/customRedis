@@ -8,22 +8,19 @@
 #include "out_helpers.h"
 #include "server.h"
 #include "utils/common.h"
-#include "utils/entry.h"
 
 static const ZSet empty;
 static ZSet* find_zset(HMap *hmap, std::string &key) {
-    // Find the zset
-    Lookup l;
-    l.key = key;
-    l.node.hcode = str_hash((uint8_t*)key.data(), key.size());
+    HNode tmp;
+    tmp.key = key;
+    tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
-    HNode *zset_hnode = hm_lookup(hmap, &l.node);
-    if (!zset_hnode) {
+    HNode *node = hm_lookup(hmap, &tmp);
+    if (!node) {
         return (ZSet*)&empty;
     }
 
-    Entry *entry = container_of(zset_hnode, Entry, node);
-    return (entry->type < 2 && entry->type == T_ZSET) ? &entry->zset : NULL;
+    return node->type == T_ZSET ? node->zset : NULL;
 }
 
 void do_get(std::string &key, Conn *conn) {
@@ -85,24 +82,21 @@ void do_keys(Conn *conn) {
 // Adds 1 if node was inserted, 0 if node was updated (this key existed in the set already)
 void do_zadd(Conn *conn, std::string &keyspace_key, double &score, std::string &z_key) {
     // Find the zset
-    Lookup l;
-    l.node.hcode = str_hash((uint8_t*)keyspace_key.data(), keyspace_key.size());
-    l.key = keyspace_key;
-    HNode *node = hm_lookup(&global_data.db, &l.node);
+    HNode tmp;
+    tmp.key = keyspace_key;
+    tmp.hcode = str_hash((uint8_t*)keyspace_key.data(), keyspace_key.size());
+    HNode *node = hm_lookup(&global_data.db, &tmp);
 
-    Entry *entry = NULL;
     if (!node) {
-        entry = new_entry(keyspace_key, T_ZSET);
-        hm_insert(&global_data.db, &entry->node);
-    }
-    else {
-        entry = container_of(node, Entry, node);
-        if (entry->type != T_ZSET) {
-            return out_err(conn, "cant add zset to a non-zset node");
-        }
+        node = new_node(keyspace_key, T_ZSET);
+        hm_insert(&global_data.db, node);
     }
 
-    int inserted = zset_insert(&entry->zset, score, z_key);
+    if (node->type != T_ZSET) {
+        return out_err(conn, "cant add zset to a non-zset node");
+    }
+
+    int inserted = zset_insert(node->zset, score, z_key);
     out_int(conn, inserted);  // 1 if inserted else 0
 }
 

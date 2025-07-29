@@ -6,7 +6,10 @@
 #include <string>
 #include <vector>
 
+#include "utils/common.h"
+
 struct HNode;
+struct ZSet;
 
 struct HTab {
     HNode **tab = NULL;
@@ -29,9 +32,11 @@ struct HNode {
     // Possible values
     std::string val = "";
     HMap hmap;
+    ZSet *zset = NULL;
 };
 
 
+HNode* new_node(std::string &key, uint32_t type);
 HNode* hm_lookup(HMap *hmap, HNode *key);
 void hm_insert(HMap *hmap, HNode *node);
 HNode* hm_delete(HMap *hmap, HNode *key);
