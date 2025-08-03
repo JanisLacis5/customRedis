@@ -24,7 +24,7 @@ struct Conn {
     uint64_t last_write_ms = 0;
 };
 
-struct {
+extern struct GlobalData {
     HMap db;
     DListNode idle_list;
     DListNode read_list;
