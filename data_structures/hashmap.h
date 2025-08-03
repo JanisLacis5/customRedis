@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-struct HNode {
-    HNode *next = NULL;
-    uint64_t hcode = 0; // hash value
-};
+#include "utils/common.h"
+
+struct HNode;
+struct ZSet;
 
 struct HTab {
     HNode **tab = NULL;
@@ -23,11 +23,26 @@ struct HMap {
     size_t migrate_pos = 0;
 };
 
-HNode* hm_lookup(HMap *hmap, HNode *key, bool (*eq)(HNode*, HNode*));
+struct HNode {
+    HNode *next = NULL;
+    uint64_t hcode = 0; // hash value
+    std::string key = "";
+    uint32_t type = 100;
+    size_t heap_idx = -1;
+
+    // Possible values
+    std::string val = "";
+    HMap hmap;
+    ZSet *zset = NULL;
+};
+
+
+HNode* new_node(std::string &key, uint32_t type);
+HNode* hm_lookup(HMap *hmap, HNode *key);
 void hm_insert(HMap *hmap, HNode *node);
-HNode* hm_delete(HMap *hmap, HNode *key, bool (*eq)(HNode*, HNode*));
+HNode* hm_delete(HMap *hmap, HNode *key);
 void hm_clear(HMap *hmap);
 size_t hm_size(HMap *hmap);
-void hm_keys(HMap* hmap, bool (*f)(HNode*, std::vector<std::string> &), std::vector<std::string> &arg);
+void hm_keys(HMap* hmap, std::vector<std::string> &arg);
 
 #endif

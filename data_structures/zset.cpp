@@ -65,7 +65,7 @@ void zset_delete(ZSet *zset, ZNode *znode) {
     hkey.node.hcode = znode->h_node.hcode;
 
     zset->avl_root = avl_del(&znode->avl_node);
-    hm_delete(&zset->hmap, &hkey.node, hcmp);
+    hm_delete(&zset->hmap, &hkey.node);
     free(znode);
 }
 
@@ -112,7 +112,7 @@ ZNode* zset_lookup(ZSet* zset, std::string& key) {
     hkey.node.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     // Do a hashmap lookup
-    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node, &hcmp);
+    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node);
     return hnode ? container_of(hnode, ZNode, h_node) : NULL;
 }
 
