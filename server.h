@@ -24,7 +24,7 @@ struct Conn {
     uint64_t last_write_ms = 0;
 };
 
-extern struct GlobalData {
+struct GlobalData {
     HMap db;
     DListNode idle_list;
     DListNode read_list;
@@ -32,8 +32,9 @@ extern struct GlobalData {
     ThreadPool threadpool;
     std::vector<Conn*> fd_to_conn;
     std::vector<HeapNode> ttl_heap;
-} global_data;
+};
 
+extern GlobalData global_data;
 uint64_t get_curr_ms();
 void set_ttl(HNode *node, uint64_t ttl);
 void rem_ttl(HNode *node);

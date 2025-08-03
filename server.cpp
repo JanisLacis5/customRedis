@@ -24,7 +24,7 @@
 #include "utils/common.h"
 #include "threadpool.h"
 
-struct GlobalData global_data;
+GlobalData global_data;
 const size_t MAX_MESSAGE_LEN = 32 << 20;
 const uint32_t MAX_TTL_TASKS = 200;
 const uint64_t IDLE_TIMEOUT_MS = 1 * 1000;
@@ -108,18 +108,9 @@ static void process_timers() {
     // Entry timeouts
     size_t curr_iterations = 0;
     while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
-        printf("BEFORE container_of: db older size = %ld, db newer size = %ld\n", global_data.db.older.size, global_data.db.newer.size);
-        printf("BEFORE container_of: global_data.db addr = %p\n", &global_data.db);
         HNode *hnode = container_of(global_data.ttl_heap[0].pos_ref, HNode, heap_idx);
-        printf("AFTER container_of: db older size = %ld, db newer size = %ld\n", global_data.db.older.size, global_data.db.newer.size);
-        printf("AFTER container_of: global_data.db addr = %p\n", &global_data.db);
-
-        printf("BEFORE rem_ttl: db older size = %ld, db newer size = %ld\n", global_data.db.older.size, global_data.db.newer.size);
         rem_ttl(hnode);
-        printf("AFTER rem_ttl: db older size = %ld, db newer size = %ld\n", global_data.db.older.size, global_data.db.newer.size);
-        printf("AFTER rem_ttl: global_data.db addr = %p\n", &global_data.db);
         HNode *deleted = hm_delete(&global_data.db, hnode);
-        printf("Deleted result: %p\n", deleted);
 
         if (curr_iterations++ >= MAX_TTL_TASKS) {
             break;
@@ -200,7 +191,6 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
 static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     // GENERAL
     if (cmd.size() == 2 && cmd[0] == "get") {
-        printf("db older size = %ld, db newer size = %ld\n", global_data.db.older.size, global_data.db.newer.size);
         do_get(cmd[1], conn);
     }
     else if (cmd.size() == 3 && cmd[0] == "set") {
@@ -229,7 +219,6 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
 
     // TIME TO LIVE
     else if (cmd.size() == 3 && cmd[0] == "expire") {
-        printf("db older size = %ld, db newer size = %ld\n", global_data.db.older.size, global_data.db.newer.size);
         uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
         do_expire(conn, cmd[1], ttl_ms);
     }

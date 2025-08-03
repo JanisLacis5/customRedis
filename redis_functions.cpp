@@ -24,7 +24,6 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
 }
 
 void do_get(std::string &key, Conn *conn) {
-    printf("db older size = %ld, db newer size = %ld\n", global_data.db.older.size, global_data.db.newer.size);
     HNode tmp;
     tmp.key = key;
     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());

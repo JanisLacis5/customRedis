@@ -2,7 +2,6 @@
 #include <cstdlib>
 
 #include "hashmap.h"
-
 #include "server.h"
 #include "zset.h"
 
@@ -101,12 +100,10 @@ static void hm_rehash_help(HMap *hmap) {
             continue;
         }
         HNode *node = ht_delete(&hmap->older, slot);
-        printf("rehash_help: migrating node %s from older to newer\n", node->key.data());
         ht_insert(&hmap->newer, node);
         nwork++;
     }
     if (hmap->older.tab && hmap->older.size == 0) {
-        printf("rehash_help: freeing older table, newer.size=%zu\n", hmap->newer.size);
         free(hmap->older.tab);
         hmap->older = HTab{};
     }
