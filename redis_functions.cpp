@@ -48,11 +48,8 @@ void do_set(Conn *conn, std::string &key, std::string &value) {
         node->val = value;
     }
     else {
-        HNode *hm_node = new HNode();
+        HNode *hm_node = new_node(key, T_STR);
         hm_node->val = value;
-        hm_node->key = key;
-        hm_node->type = T_STR;
-        hm_node->hcode = str_hash((uint8_t*)key.data(), key.size());
         hm_insert(&global_data.db, hm_node);
     }
     buf_append_u8(conn->outgoing, TAG_NULL);
@@ -221,11 +218,7 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        hm_node = new HNode();
-        hm_node->key = cmd[1];
-        hm_node->type = T_HSET;
-        hm_node->hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
-
+        hm_node = new_node(cmd[1], T_HSET);
         hm_insert(&global_data.db, hm_node);
     }
 
@@ -247,12 +240,8 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
         node->val = cmd[3];
     }
     else {
-        HNode *new_node = new HNode();
-        new_node->key = cmd[2];
-        new_node->hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
-        new_node->type = T_STR;
+        HNode *new_node = new_node(cmd[2], T_STR);
         new_node->val = cmd[3];
-
         hm_insert(&hm_node->hmap, new_node);
     }
     out_null(conn);
@@ -343,10 +332,7 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         out_err(conn, "node with the provided key exists and is not of type LIST\n");
     }
     else {
-        hm_node = new HNode();
-        hm_node->key = cmd[1];
-        hm_node->hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
-        hm_node->type = T_LIST;
+        hm_node = new_node(cmd[1], T_LIST);
     }
 
     DListNode *new_node = new DListNode();
