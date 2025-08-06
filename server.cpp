@@ -256,11 +256,21 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
 
     // TODO: implement
     // LINKED LIST
-    else if (cmd[0] == "lpush") {}
-    else if (cmd[0] == "rpush") {}
-    else if (cmd[0] == "lpop") {}
-    else if (cmd[0] == "rpop") {}
-    else if (cmd[0] == "lrange") {}
+    else if (cmd[0] == "lpush") {
+        do_lpush(conn, cmd);
+    }
+    else if (cmd[0] == "rpush") {
+        do_rpush(conn, cmd);
+    }
+    else if (cmd[0] == "lpop") {
+        do_lpop(conn, cmd);
+    }
+    else if (cmd[0] == "rpop") {
+        do_rpop(conn, cmd);
+    }
+    else if (cmd[0] == "lrange") {
+        do_lrange(conn, cmd);
+    }
 
     // SET
     else if (cmd[0] == "sadd") {}

@@ -332,3 +332,13 @@ void do_hgetall(Conn *conn, std::vector<std::string> &cmd) {
         out_str(conn, key.data(), key.size());
     }
 }
+
+void do_lpush(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_rpush(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_lpop(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_rpop(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_lrange(Conn *conn, std::vector<std::string> &cmd) {}

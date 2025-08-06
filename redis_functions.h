@@ -33,4 +33,11 @@ void do_hget(Conn *conn, std::vector<std::string> &cmd);
 void do_hgetall(Conn *conn, std::vector<std::string> &cmd);
 void do_hdel(Conn *conn, std::vector<std::string> &cmd);
 
+// Linked list functions
+void do_lpush(Conn *conn, std::vector<std::string> &cmd);
+void do_rpush(Conn *conn, std::vector<std::string> &cmd);
+void do_lpop(Conn *conn, std::vector<std::string> &cmd);
+void do_rpop(Conn *conn, std::vector<std::string> &cmd);
+void do_lrange(Conn *conn, std::vector<std::string> &cmd);
+
 #endif
