@@ -30,3 +30,13 @@ void dlist_insert_before(DListNode *target, DListNode *node) {
     prev->next = node;
     node->prev = prev;
 }
+
+void dlist_insert_after(DListNode *target, DListNode *node) {
+    DListNode *next = target->next;
+
+    target->next = node;
+    node->prev = target;
+
+    next->prev = node;
+    node->next = next;
+}

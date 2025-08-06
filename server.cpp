@@ -257,16 +257,16 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     // TODO: implement
     // LINKED LIST
     else if (cmd[0] == "lpush") {
-        do_lpush(conn, cmd);
+        do_push(conn, cmd, LLIST_SIDE_LEFT);
     }
     else if (cmd[0] == "rpush") {
-        do_rpush(conn, cmd);
+        do_push(conn, cmd, LLIST_SIDE_RIGHT);
     }
     else if (cmd[0] == "lpop") {
-        do_lpop(conn, cmd);
+        do_pop(conn, cmd, LLIST_SIDE_LEFT);
     }
     else if (cmd[0] == "rpop") {
-        do_rpop(conn, cmd);
+        do_pop(conn, cmd, LLIST_SIDE_RIGHT);
     }
     else if (cmd[0] == "lrange") {
         do_lrange(conn, cmd);

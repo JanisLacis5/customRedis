@@ -357,16 +357,10 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         hm_node->list.tail = new_node;
     }
     else if (side == LLIST_SIDE_LEFT) {
-        DListNode *head = hm_node->list.head;
-        new_node->next = head;
-        head->prev = new_node;
-        hm_node->list.head = new_node;
+        dlist_insert_before(hm_node->list.head, new_node);
     }
     else if (side == LLIST_SIDE_RIGHT) {
-        DListNode *tail = hm_node->list.tail;
-        new_node->prev = tail;
-        tail->next = new_node;
-        hm_node->list.tail = new_node;
+        dlist_insert_after(hm_node->list.tail, new_node);
     }
     else {
         out_err(conn, "internal error (do_push() side != 0 or 1)\n");
