@@ -355,6 +355,43 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
     return out_int(conn, ++hm_node->list.size);
 }
 
-void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {}
+void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!hm_node) {
+        out_err(conn, "key does not exist in the database\n");
+    }
+    if (hm_node && hm_node->type != T_LIST) {
+        out_err(conn, "node with the provided key exists and is not of type LIST\n");
+    }
+
+    uint32_t size = cmd.size() > 1 ? stoi(cmd[2]) : 1;
+    size = std::max(size, hm_node->list.size);
+    if (size <= 0) {
+        out_err(conn, "value must be positive\n");
+    }
+
+    out_arr(conn, size);
+    while (size--) {
+        DListNode *node = side == LLIST_SIDE_LEFT ? hm_node->list.head : hm_node->list.tail;
+        out_str(conn, node->val.data(), node->val.size());
+
+        if (side == LLIST_SIDE_LEFT) {
+            hm_node->list.head = node->next;
+        }
+        else if (side == LLIST_SIDE_RIGHT) {
+            hm_node->list.tail = node->prev;
+        }
+        else {
+            out_err(conn, "internal error (do_pop() side not in [0 or 1])\n");
+        }
+
+        hm_node->list.size--;
+        free(node);
+    }
+}
 
 void do_lrange(Conn *conn, std::vector<std::string> &cmd) {}
