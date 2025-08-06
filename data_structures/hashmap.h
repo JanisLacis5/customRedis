@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "dlist.h"
 #include "utils/common.h"
 
 struct HNode;
@@ -33,6 +34,7 @@ struct HNode {
     // Possible values
     std::string val = "";
     HMap hmap;
+    DList list;
     ZSet *zset = NULL;
 };
 

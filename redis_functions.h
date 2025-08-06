@@ -5,6 +5,11 @@
 #include "data_structures/heap.h"
 #include "server.h"
 
+enum SIDE {
+    LLIST_SIDE_LEFT = 0,
+    LLIST_SIDE_RIGHT = 1
+};
+
 // Keyspace functions
 void do_get(std::string &key, Conn *conn);
 void do_set(Conn *conn, std::string &key, std::string &value);
@@ -34,10 +39,8 @@ void do_hgetall(Conn *conn, std::vector<std::string> &cmd);
 void do_hdel(Conn *conn, std::vector<std::string> &cmd);
 
 // Linked list functions
-void do_lpush(Conn *conn, std::vector<std::string> &cmd);
-void do_rpush(Conn *conn, std::vector<std::string> &cmd);
-void do_lpop(Conn *conn, std::vector<std::string> &cmd);
-void do_rpop(Conn *conn, std::vector<std::string> &cmd);
+void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side);
+void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side);
 void do_lrange(Conn *conn, std::vector<std::string> &cmd);
 
 #endif

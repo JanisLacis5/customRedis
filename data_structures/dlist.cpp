@@ -23,8 +23,10 @@ void dlist_deatach(DListNode *node) {
 
 void dlist_insert_before(DListNode *target, DListNode *node) {
     DListNode *prev = target->prev;
+
     target->prev = node;
     node->next = target;
+
     prev->next = node;
     node->prev = prev;
 }

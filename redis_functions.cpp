@@ -333,12 +333,48 @@ void do_hgetall(Conn *conn, std::vector<std::string> &cmd) {
     }
 }
 
-void do_lpush(Conn *conn, std::vector<std::string> &cmd) {}
+void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
-void do_rpush(Conn *conn, std::vector<std::string> &cmd) {}
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (hm_node && hm_node->type != T_LIST) {
+        out_err(conn, "node with the provided key exists and is not of type LIST\n");
+    }
+    else {
+        hm_node = new HNode();
+        hm_node->key = cmd[1];
+        hm_node->hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+        hm_node->type = T_LIST;
+    }
 
-void do_lpop(Conn *conn, std::vector<std::string> &cmd) {}
+    DListNode *new_node = new DListNode();
+    new_node->val = cmd[2];
 
-void do_rpop(Conn *conn, std::vector<std::string> &cmd) {}
+    if (!hm_node->list.size) {
+        hm_node->list.head = new_node;
+        hm_node->list.tail = new_node;
+    }
+    else if (side == LLIST_SIDE_LEFT) {
+        DListNode *head = hm_node->list.head;
+        new_node->next = head;
+        head->prev = new_node;
+        hm_node->list.head = new_node;
+    }
+    else if (side == LLIST_SIDE_RIGHT) {
+        DListNode *tail = hm_node->list.tail;
+        new_node->prev = tail;
+        tail->next = new_node;
+        hm_node->list.tail = new_node;
+    }
+    else {
+        out_err(conn, "internal error (do_push() side != 0 or 1)\n");
+    }
+
+    return out_int(conn, ++hm_node->list.size);
+}
+
+void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {}
 
 void do_lrange(Conn *conn, std::vector<std::string> &cmd) {}

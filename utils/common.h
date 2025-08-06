@@ -9,7 +9,8 @@
 enum EntryTypes {
     T_STR = 0,
     T_ZSET = 1,
-    T_HSET = 2
+    T_HSET = 2,
+    T_LIST = 3
 };
 
 // FNV hash

@@ -2,10 +2,19 @@
 #define DLIST_H
 
 #include <cstddef>
+#include <stdint.h>
+#include <string>
 
 struct DListNode {
     DListNode *prev = NULL;
     DListNode *next = NULL;
+    std::string val = "";
+};
+
+struct DList {
+    DListNode *head = NULL;
+    DListNode *tail = NULL;
+    uint32_t size = 0;
 };
 
 void dlist_init(DListNode *node);

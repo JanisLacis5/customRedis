@@ -10,8 +10,8 @@ add_library(customRedis STATIC
     redis_functions.h
     out_helpers.cpp
     out_helpers.h
-    dlist.cpp
-    dlist.h
+        data_structures/dlist.cpp
+        data_structures/dlist.h
     threadpool.cpp
     threadpool.h
         data_structures/hashmap.cpp

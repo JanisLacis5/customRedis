@@ -13,7 +13,7 @@
 #include <time.h>
 
 #include "server.h"
-#include "dlist.h"
+#include "data_structures/dlist.h"
 #include "data_structures/zset.h"
 #include "buffer_funcs.h"
 #include "data_structures/hashmap.h"

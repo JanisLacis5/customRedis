@@ -1,7 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include "dlist.h"
+#include "data_structures/dlist.h"
 #include "threadpool.h"
 #include "data_structures/hashmap.h"
 #include "data_structures/heap.h"
