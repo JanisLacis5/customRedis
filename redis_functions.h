@@ -43,4 +43,10 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side);
 void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side);
 void do_lrange(Conn *conn, std::vector<std::string> &cmd);
 
+// Hashset functions
+void do_sadd(Conn *conn, std::vector<std::string> &cmd);
+void do_srem(Conn *conn, std::vector<std::string> &cmd);
+void do_smembers(Conn *conn, std::vector<std::string> &cmd);
+void do_scard(Conn *conn, std::vector<std::string> &cmd);
+
 #endif

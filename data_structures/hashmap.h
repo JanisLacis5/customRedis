@@ -36,6 +36,7 @@ struct HNode {
     HMap hmap;
     DList list;
     ZSet *zset = NULL;
+    HMap hset;
 };
 
 
