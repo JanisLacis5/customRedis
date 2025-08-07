@@ -240,9 +240,9 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
         node->val = cmd[3];
     }
     else {
-        HNode *new_node = new_node(cmd[2], T_STR);
-        new_node->val = cmd[3];
-        hm_insert(&hm_node->hmap, new_node);
+        HNode *set_node = new_node(cmd[2], T_STR);
+        set_node->val = cmd[3];
+        hm_insert(&hm_node->hmap, set_node);
     }
     out_null(conn);
 }
@@ -394,7 +394,52 @@ void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
     }
 }
 
-void do_lrange(Conn *conn, std::vector<std::string> &cmd) {}
+void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!hm_node) {
+        out_err(conn, "key does not exist in the database\n");
+    }
+    if (hm_node && hm_node->type != T_LIST) {
+        out_err(conn, "node with the provided key exists and is not of type LIST\n");
+    }
+
+    int32_t start = std::stoi(cmd[2]);
+    int32_t end = std::stoi(cmd[3]);
+    if (start < 0) {
+        start = hm_node->list.size + start;
+    }
+    if (end < 0) {
+        end = hm_node->list.size + end;
+    }
+
+    uint32_t l = start;
+    uint32_t r = hm_node->list.size - start - 1;
+
+    DListNode *begin = NULL;
+    if (l < r) {
+        begin = hm_node->list.tail;
+        while (r--) {
+            begin = begin->prev;
+        }
+    }
+    else {
+        begin = hm_node->list.head;
+        while (l--) {
+            begin = begin->next;
+        }
+    }
+
+    uint32_t size = end - start + 1;
+    out_arr(conn, std::max((uint32_t)0, size));
+    for (uint32_t i = start; i <= end; i++) {
+        out_str(conn, begin->val.data(), begin->val.size());
+        begin = begin->next;
+    }
+}
 
 void do_sadd(Conn *conn, std::vector<std::string> &cmd) {}
 void do_srem(Conn *conn, std::vector<std::string> &cmd) {}
