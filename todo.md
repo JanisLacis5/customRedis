@@ -7,7 +7,7 @@ Adding the other “built-in” Redis types will instantly beef up your feature 
 | Data Type   | Commands to Add                      | Rough Effort | Done? |
 |-------------|--------------------------------------|--------------|-------|
 | Hashes      | HSET / HGET / HDEL / HGETALL         | Easy         | YES   |
-| Lists       | LPUSH / RPUSH / LPOP / RPOP / LRANGE | Easy–Medium  | NO    |
+| Lists       | LPUSH / RPUSH / LPOP / RPOP / LRANGE | Easy–Medium  | YES   |
 | Sets        | SADD / SREM / SMEMBERS / SCARD       | Easy         | NO    |
 | Bitmaps     | SETBIT / GETBIT / BITCOUNT           | Medium       | NO    |
 | HyperLogLog | PFADD / PFCOUNT                      | Medium       | NO    |
