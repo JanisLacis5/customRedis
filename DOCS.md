@@ -158,6 +158,15 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | TTL     | `TTL <key>`              | Get remaining TTL in seconds              |
 | PERSIST | `PERSIST <key>`          | Remove expiration to make a key permanent |
 
+## Linked List commands
+| Command | Syntax                       | Description                                                                                     |
+|---------|------------------------------|-------------------------------------------------------------------------------------------------|
+| LPUSH   | `LPUSH <key> <value>`        | Add a new value to the linked list's left side (beginning)                                      |
+| RPUSH   | `RPUSH <key> <value>`        | Add a new value to the linked list's right side (end)                                           |
+| LPOP    | `LPOP <key> <n>`             | Remove the first n values from the linked list                                                  |
+| RPOP    | `RPOP <key> <n>`             | Remove the last n values from the linked list                                                   |
+| LRANGE  | `LRANGE <key> <start> <end>` | Return values in range [start, end] on a 0-indexed list. <br/> Both start and end are included. |
+
 # Limitations
 - No on-disk persistence (RDB/AOF) yet
 - Single-threaded event loop; thread pool only for off-loading
