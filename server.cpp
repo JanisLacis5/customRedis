@@ -254,21 +254,20 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
         );
     }
 
-    // TODO: implement
     // LINKED LIST
-    else if (cmd[0] == "lpush") {
+    else if (cmd[0] == "lpush" && cmd.size() == 3) {
         do_push(conn, cmd, LLIST_SIDE_LEFT);
     }
-    else if (cmd[0] == "rpush") {
+    else if (cmd[0] == "rpush" && cmd.size() == 3) {
         do_push(conn, cmd, LLIST_SIDE_RIGHT);
     }
-    else if (cmd[0] == "lpop") {
+    else if (cmd[0] == "lpop" && cmd.size() == 2) {
         do_pop(conn, cmd, LLIST_SIDE_LEFT);
     }
-    else if (cmd[0] == "rpop") {
+    else if (cmd[0] == "rpop" && cmd.size() == 2) {
         do_pop(conn, cmd, LLIST_SIDE_RIGHT);
     }
-    else if (cmd[0] == "lrange") {
+    else if (cmd[0] == "lrange" && cmd.size() == 4) {
         do_lrange(conn, cmd);
     }
 
@@ -278,6 +277,7 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     else if (cmd[0] == "smembers") {}
     else if (cmd[0] == "scard") {}
 
+    // TODO: implement
     // BITMAP
     else if (cmd[0] == "setbit") {}
     else if (cmd[0] == "getbit") {}

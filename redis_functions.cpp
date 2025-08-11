@@ -328,11 +328,12 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
-    if (hm_node && hm_node->type != T_LIST) {
-        out_err(conn, "node with the provided key exists and is not of type LIST\n");
-    }
-    else {
+    if (!hm_node) {
         hm_node = new_node(cmd[1], T_LIST);
+        hm_insert(&global_data.db, hm_node);
+    }
+    if (hm_node->type != T_LIST) {
+        return out_err(conn, "node with the provided key exists and is not of type LIST\n");
     }
 
     DListNode *new_node = new DListNode();
@@ -343,13 +344,14 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         hm_node->list.tail = new_node;
     }
     else if (side == LLIST_SIDE_LEFT) {
+        printf("here\n");
         dlist_insert_before(hm_node->list.head, new_node);
     }
     else if (side == LLIST_SIDE_RIGHT) {
         dlist_insert_after(hm_node->list.tail, new_node);
     }
     else {
-        out_err(conn, "internal error (do_push() side != 0 or 1)\n");
+        return out_err(conn, "internal error (do_push() side != 0 or 1)\n");
     }
 
     return out_int(conn, ++hm_node->list.size);
@@ -362,16 +364,16 @@ void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        out_err(conn, "key does not exist in the database\n");
+        return out_err(conn, "key does not exist in the database\n");
     }
     if (hm_node && hm_node->type != T_LIST) {
-        out_err(conn, "node with the provided key exists and is not of type LIST\n");
+        return out_err(conn, "node with the provided key exists and is not of type LIST\n");
     }
 
     uint32_t size = cmd.size() > 1 ? stoi(cmd[2]) : 1;
     size = std::max(size, hm_node->list.size);
     if (size <= 0) {
-        out_err(conn, "value must be positive\n");
+        return out_err(conn, "value must be positive\n");
     }
 
     out_arr(conn, size);
@@ -401,10 +403,10 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        out_err(conn, "key does not exist in the database\n");
+        return out_err(conn, "key does not exist in the database\n");
     }
-    if (hm_node && hm_node->type != T_LIST) {
-        out_err(conn, "node with the provided key exists and is not of type LIST\n");
+    if (hm_node->type != T_LIST) {
+        return out_err(conn, "node with the provided key exists and is not of type LIST\n");
     }
 
     int32_t start = std::stoi(cmd[2]);
@@ -433,9 +435,12 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
         }
     }
 
-    uint32_t size = end - start + 1;
-    out_arr(conn, std::max((uint32_t)0, size));
-    for (uint32_t i = start; i <= end; i++) {
+    uint32_t size = std::max(0, end - start + 1);
+    size = std::min(size, hm_node->list.size);
+    printf("%d\n", size);
+    out_arr(conn, size);
+
+    while (size--) {
         out_str(conn, begin->val.data(), begin->val.size());
         begin = begin->next;
     }
