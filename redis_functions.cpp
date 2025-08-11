@@ -344,11 +344,12 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         hm_node->list.tail = new_node;
     }
     else if (side == LLIST_SIDE_LEFT) {
-        printf("here\n");
         dlist_insert_before(hm_node->list.head, new_node);
+        hm_node->list.head = new_node;
     }
     else if (side == LLIST_SIDE_RIGHT) {
         dlist_insert_after(hm_node->list.tail, new_node);
+        hm_node->list.tail = new_node;
     }
     else {
         return out_err(conn, "internal error (do_push() side != 0 or 1)\n");
@@ -370,8 +371,8 @@ void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         return out_err(conn, "node with the provided key exists and is not of type LIST\n");
     }
 
-    uint32_t size = cmd.size() > 1 ? stoi(cmd[2]) : 1;
-    size = std::max(size, hm_node->list.size);
+    uint32_t size = cmd.size() > 2 ? stoi(cmd[2]) : 1;
+    size = std::min(size, hm_node->list.size);
     if (size <= 0) {
         return out_err(conn, "value must be positive\n");
     }
@@ -382,9 +383,15 @@ void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         out_str(conn, node->val.data(), node->val.size());
 
         if (side == LLIST_SIDE_LEFT) {
+            if (node->next) {
+                node->next->prev = NULL;
+            }
             hm_node->list.head = node->next;
         }
         else if (side == LLIST_SIDE_RIGHT) {
+            if (node->prev) {
+                node->prev->next = NULL;
+            }
             hm_node->list.tail = node->prev;
         }
         else {
@@ -417,6 +424,9 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
     if (end < 0) {
         end = hm_node->list.size + end;
     }
+    if (start >= hm_node->list.size) {
+        return out_err(conn, "index out of range\n");
+    }
 
     uint32_t l = start;
     uint32_t r = hm_node->list.size - start - 1;
@@ -437,7 +447,6 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
 
     uint32_t size = std::max(0, end - start + 1);
     size = std::min(size, hm_node->list.size);
-    printf("%d\n", size);
     out_arr(conn, size);
 
     while (size--) {

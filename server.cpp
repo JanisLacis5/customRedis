@@ -261,10 +261,10 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     else if (cmd[0] == "rpush" && cmd.size() == 3) {
         do_push(conn, cmd, LLIST_SIDE_RIGHT);
     }
-    else if (cmd[0] == "lpop" && cmd.size() == 2) {
+    else if (cmd[0] == "lpop" && cmd.size() >= 2) {
         do_pop(conn, cmd, LLIST_SIDE_LEFT);
     }
-    else if (cmd[0] == "rpop" && cmd.size() == 2) {
+    else if (cmd[0] == "rpop" && cmd.size() >= 2) {
         do_pop(conn, cmd, LLIST_SIDE_RIGHT);
     }
     else if (cmd[0] == "lrange" && cmd.size() == 4) {
@@ -272,10 +272,18 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
     }
 
     // SET
-    else if (cmd[0] == "sadd") {}
-    else if (cmd[0] == "srem") {}
-    else if (cmd[0] == "smembers") {}
-    else if (cmd[0] == "scard") {}
+    else if (cmd[0] == "sadd") {
+        do_sadd(conn, cmd);
+    }
+    else if (cmd[0] == "srem") {
+        do_srem(conn, cmd);
+    }
+    else if (cmd[0] == "smembers") {
+        do_smembers(conn, cmd);
+    }
+    else if (cmd[0] == "scard") {
+        do_scard(conn, cmd);
+    }
 
     // TODO: implement
     // BITMAP
