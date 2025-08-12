@@ -26,6 +26,18 @@ static ZSet* find_zset(HMap *hmap, std::string &key) {
     return node->type == T_ZSET ? node->zset : NULL;
 }
 
+static bool validate_hmnode(Conn *conn, HNode *hm_node, uint32_t type) {
+    if (!hm_node) {
+        out_err(conn, "key does not exist");
+        return false;
+    }
+    if (hm_node->type != type) {
+        out_err(conn, "key already exists in database but is not the correct type");
+        return false;
+    }
+    return true;
+}
+
 void do_get(std::string &key, Conn *conn) {
     HNode tmp;
     tmp.key = key;
@@ -335,7 +347,7 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_LIST) {
-        return out_err(conn, "node with the provided key exists and is not of type LIST\n");
+        return out_err(conn, "node with the provided key exists and is not of type LIST");
     }
 
     DListNode *new_node = new DListNode();
@@ -354,7 +366,7 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
         hm_node->list.tail = new_node;
     }
     else {
-        return out_err(conn, "internal error (do_push() side != 0 or 1)\n");
+        return out_err(conn, "internal error (do_push() side != 0 or 1)");
     }
 
     return out_int(conn, ++hm_node->list.size);
@@ -367,16 +379,16 @@ void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "key does not exist in the database\n");
+        return out_err(conn, "key does not exist in the database");
     }
     if (hm_node && hm_node->type != T_LIST) {
-        return out_err(conn, "node with the provided key exists and is not of type LIST\n");
+        return out_err(conn, "node with the provided key exists and is not of type LIST");
     }
 
     uint32_t size = cmd.size() > 2 ? stoi(cmd[2]) : 1;
     size = std::min(size, hm_node->list.size);
     if (size <= 0) {
-        return out_err(conn, "value must be positive\n");
+        return out_err(conn, "value must be positive");
     }
 
     out_arr(conn, size);
@@ -397,7 +409,7 @@ void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
             hm_node->list.tail = node->prev;
         }
         else {
-            out_err(conn, "internal error (do_pop() side not in [0 or 1])\n");
+            out_err(conn, "internal error (do_pop() side not in [0 or 1])");
         }
 
         hm_node->list.size--;
@@ -412,10 +424,10 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "key does not exist in the database\n");
+        return out_err(conn, "key does not exist in the database");
     }
     if (hm_node->type != T_LIST) {
-        return out_err(conn, "node with the provided key exists and is not of type LIST\n");
+        return out_err(conn, "node with the provided key exists and is not of type LIST");
     }
 
     int32_t start = std::stoi(cmd[2]);
@@ -427,7 +439,7 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
         end = hm_node->list.size + end;
     }
     if (start >= hm_node->list.size) {
-        return out_err(conn, "index out of range\n");
+        return out_err(conn, "index out of range");
     }
 
     uint32_t l = start;
@@ -468,7 +480,7 @@ void do_sadd(Conn *conn, std::vector<std::string> &cmd) {
         hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_SET) {
-        return out_err(conn, "key already exists in the database and is not of type SET\n");
+        return out_err(conn, "key already exists in the database and is not of type SET");
     }
 
     // Add a hnode without value - key will be the value
@@ -483,10 +495,10 @@ void do_srem(Conn *conn, std::vector<std::string> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "node with the provided key does not exist\n");
+        return out_err(conn, "node with the provided key does not exist");
     }
     if (hm_node->type != T_SET) {
-        return out_err(conn, "key is not of type SET\n");
+        return out_err(conn, "key is not of type SET");
     }
 
     HNode key;
@@ -503,10 +515,10 @@ void do_smembers(Conn *conn, std::vector<std::string> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "node with the provided key does not exist\n");
+        return out_err(conn, "node with the provided key does not exist");
     }
     if (hm_node->type != T_SET) {
-        return out_err(conn, "key is not of type SET\n");
+        return out_err(conn, "key is not of type SET");
     }
 
     std::vector<std::string> keys;
@@ -524,7 +536,7 @@ void do_scard(Conn *conn, std::vector<std::string> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "node with the provided key does not exist\n");
+        return out_err(conn, "node with the provided key does not exist");
     }
     if (hm_node->type != T_SET) {
         return out_err(conn, "key is not of type SET\n");
@@ -533,6 +545,7 @@ void do_scard(Conn *conn, std::vector<std::string> &cmd) {
     size_t size = hm_size(&hm_node->set);
     out_int(conn, size);
 }
+
 
 void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
@@ -545,15 +558,15 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
         hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_BITMAP) {
-        return out_err(conn, "key already exists in database but is not of type BITMAP\n");
+        return out_err(conn, "key already exists in database but is not of type BITMAP");
     }
 
     int64_t idx = stoll(cmd[2]);
     if (idx < 0 || idx > UINT32_MAX) {
-        return out_err(conn, "index must be in range [0, 2^32-1]\n");
+        return out_err(conn, "index must be in range [0, 2^32-1]");
     }
     if (cmd[3] != "0" && cmd[3] != "1") {
-        return out_err(conn, "bit has to be 0 or 1\n");
+        return out_err(conn, "bit has to be 0 or 1");
     }
 
     size_t bitmap_size = hm_node->bitmap.size();
@@ -567,6 +580,23 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
     hm_node->bitmap[idx] = cmd[3][0];
 }
 
-void do_getbit(Conn *conn, std::vector<std::string> &cmd) {}
+void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!validate_hmnode(conn, hm_node, T_BITMAP)) {
+        return;
+    }
+
+    int32_t idx = stoll(cmd[2]);
+    if (idx < 0 || idx >= hm_node->bitmap.size()) {
+        return out_err(conn, "index outside of range");
+    }
+
+    uint32_t bit = (uint32_t)(hm_node->bitmap[idx] - '0');
+    out_int(conn, bit);
+}
 
 void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {}
