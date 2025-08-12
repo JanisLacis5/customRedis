@@ -561,26 +561,37 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
         return out_err(conn, "key already exists in database but is not of type BITMAP");
     }
 
-    int64_t idx = stoll(cmd[2]);
-    if (idx < 0) {
-        idx = hm_node->bitmap.size() + idx;
-    }
-    if (idx < 0 || idx > UINT32_MAX) {
+    // Get the bit index
+    int64_t bit_idx = stoll(cmd[2]);
+    if (bit_idx < 0 || bit_idx > UINT32_MAX) {
         return out_err(conn, "index must be in range [0, 2^32-1]");
     }
     if (cmd[3] != "0" && cmd[3] != "1") {
         return out_err(conn, "bit has to be 0 or 1");
     }
+    int64_t byte_idx = bit_idx / 8;
+    bit_idx = 7 - (bit_idx % 8);
 
+
+    // Extend the bitmap if necessary
     size_t bitmap_size = hm_node->bitmap.size();
-    if (idx >= bitmap_size) {
-        std::string add(idx - bitmap_size + 1, '0');
-        hm_node->bitmap.append(add);
+    if (byte_idx >= bitmap_size) {
+        hm_node->bitmap.resize(byte_idx + 1, '\0');
     }
 
-    uint8_t prev = hm_node->bitmap[idx] - '0';
+    // Return the previous bit
+    uint8_t byte = hm_node->bitmap[byte_idx];
+    uint8_t prev = (byte >> bit_idx) & 1;
     out_int(conn, prev);
-    hm_node->bitmap[idx] = cmd[3][0];
+
+    // Set the bit
+    if (cmd[3] == "1") {
+        byte |= (1u << bit_idx);
+    }
+    else {
+        byte &= ~(1u << bit_idx);
+    }
+    hm_node->bitmap[byte_idx] = byte;
 }
 
 void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
