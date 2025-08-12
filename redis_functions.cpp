@@ -562,6 +562,9 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
     }
 
     int64_t idx = stoll(cmd[2]);
+    if (idx < 0) {
+        idx = hm_node->bitmap.size() + idx;
+    }
     if (idx < 0 || idx > UINT32_MAX) {
         return out_err(conn, "index must be in range [0, 2^32-1]");
     }
@@ -590,7 +593,10 @@ void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
         return;
     }
 
-    int32_t idx = stoll(cmd[2]);
+    int64_t idx = stoll(cmd[2]);
+    if (idx < 0) {
+        idx = hm_node->bitmap.size() + idx;
+    }
     if (idx < 0 || idx >= hm_node->bitmap.size()) {
         return out_err(conn, "index outside of range");
     }
@@ -599,4 +605,43 @@ void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
     out_int(conn, bit);
 }
 
-void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {}
+void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!validate_hmnode(conn, hm_node, T_BITMAP)) {
+        return;
+    }
+
+    int64_t start = cmd.size() == 4 ? stoll(cmd[2]) : 0;
+    int64_t end = cmd.size() == 4 ? stoll(cmd[3]) : hm_node->bitmap.size() - 1;
+    if (start < 0) {
+        start = hm_node->bitmap.size() + start;
+    }
+    if (end < 0) {
+        end = hm_node->bitmap.size() + end;
+    }
+
+    size_t ret = 0;
+    if (cmd.size() == 5 && cmd[5] == "BYTE") {
+        for (int64_t byte = start; byte <= end; byte++) {
+            for (int64_t bit = byte * 8; bit < (byte + 1) * 8; bit++) {
+                if (bit >= hm_node->bitmap.size()) {
+                    return out_int(conn, ret);
+                }
+                ret += (hm_node->bitmap[bit] == '1');
+            }
+        }
+    }
+    else {
+        for (int64_t bit = start; bit <= std::min(end, (int64_t)hm_node->bitmap.size() - 1); bit++) {
+            if (bit >= hm_node->bitmap.size()) {
+                return out_int(conn, ret);
+            }
+            ret += (hm_node->bitmap[bit] == '1');
+        }
+    }
+    out_int(conn, ret);
+}
