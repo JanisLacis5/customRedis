@@ -473,6 +473,26 @@ void do_sadd(Conn *conn, std::vector<std::string> &cmd) {
     hm_insert(&hm_node->set, in_node);
 }
 
-void do_srem(Conn *conn, std::vector<std::string> &cmd) {}
+void do_srem(Conn *conn, std::vector<std::string> &cmd) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!hm_node) {
+        return out_err(conn, "node with the provided key does not exist\n");
+    }
+    if (hm_node->type != T_SET) {
+        return out_err(conn, "key is not of type SET\n");
+    }
+
+    HNode key;
+    key.key = cmd[2];
+    key.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
+    HNode *deleted = hm_delete(&hm_node->set, &key);
+    return out_int(conn, (deleted ? 1 : 0));
+}
+
 void do_smembers(Conn *conn, std::vector<std::string> &cmd) {}
+
 void do_scard(Conn *conn, std::vector<std::string> &cmd) {}
