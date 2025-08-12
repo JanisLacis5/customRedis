@@ -627,19 +627,20 @@ void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
     }
 
     int64_t start = cmd.size() > 2 ? stoll(cmd[2]) : 0;
-    int64_t end = cmd.size() > 2 ? stoll(cmd[3]) : hm_node->bitmap.size();
-    end = (cmd.size() == 5 && cmd[4] == "BYTE") ? end - 1 : end * 8 - 1;
-
-    if (start < 0) {
-        start = hm_node->bitmap.size() + start;
-    }
-    if (end < 0) {
-        end = hm_node->bitmap.size() + end;
-    }
+    int64_t end = cmd.size() > 2 ? stoll(cmd[3]) : -1;
+    bool is_byte_mode = cmd.size() == 5 && cmd[4] == "BYTE";
 
     size_t ret = 0;
-    if (cmd.size() == 5 && cmd[4] == "BYTE") {
-        for (int64_t byte_idx = start; byte_idx <= std::min(end, (int64_t)hm_node->bitmap.size() - 1); byte_idx++) {
+    if (is_byte_mode) {
+        if (start < 0) {
+            start += hm_node->bitmap.size();
+        }
+        if (end < 0) {
+            end += hm_node->bitmap.size();
+        }
+        end = std::min(end, (int64_t)hm_node->bitmap.size() - 1);
+
+        for (int64_t byte_idx = start; byte_idx <= end; byte_idx++) {
             uint8_t byte = hm_node->bitmap[byte_idx];
             while (byte) {
                 ret += (byte & 1);
@@ -648,19 +649,19 @@ void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
         }
     }
     else {
-        int64_t curr = start / 8;
-        int64_t pt = curr;
-        while (pt <= end && curr < hm_node->bitmap.size()) {
-            uint8_t block = hm_node->bitmap[curr];
-            while (block && pt <= end) {
-                if (pt >= start && pt <= end) {
-                    ret += (block & 1);
-                }
-                block >>= 1;
-                pt++;
-            }
-            curr++;
-            pt = curr * 8;
+        size_t bit_count = hm_node->bitmap.size() * 8;
+        if (start < 0) {
+            start += bit_count;
+        }
+        if (end < 0) {
+            end += bit_count;
+        }
+        end = std::min(end, (int64_t)bit_count - 1);
+
+        for (int64_t bit_pos = start; bit_pos <= end; bit_pos++) {
+            int64_t byte_idx = bit_pos / 8;
+            int64_t bit_idx = 7 - (bit_pos % 8);
+            ret += (hm_node->bitmap[byte_idx] >> bit_idx) & 1;
         }
     }
     out_int(conn, ret);
