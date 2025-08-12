@@ -167,6 +167,14 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | RPOP    | `RPOP <key> <n>`             | Remove the last n values from the linked list                                                   |
 | LRANGE  | `LRANGE <key> <start> <end>` | Return values in range [start, end] on a 0-indexed list. <br/> Both start and end are included. |
 
+## Hashset commands
+| Command  | Syntax               | Description                      |
+|----------|----------------------|----------------------------------|
+| SADD     | `SADD <key> <value>` | Adds value to a hashset          |
+| SREM     | `SREM <key> <value>` | Removes value from a hashset     |
+| SMEMBERS | `SMEMBERS <key>`     | Returns all members of a hashset |
+| SCARD    | `SCARD <key>`        | Retuns hashset's elment count    |
+
 # Limitations
 - No on-disk persistence (RDB/AOF) yet
 - Single-threaded event loop; thread pool only for off-loading
