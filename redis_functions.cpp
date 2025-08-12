@@ -604,15 +604,15 @@ void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
         return;
     }
 
-    int64_t idx = stoll(cmd[2]);
-    if (idx < 0) {
-        idx = hm_node->bitmap.size() + idx;
-    }
-    if (idx < 0 || idx >= hm_node->bitmap.size()) {
+    int64_t bit_idx = stoll(cmd[2]);
+    if (bit_idx < 0 || bit_idx / 8 >= hm_node->bitmap.size()) {
         return out_err(conn, "index outside of range");
     }
+    uint32_t byte_idx = bit_idx / 8;
+    bit_idx = 7 - (bit_idx % 8);
 
-    uint32_t bit = (uint32_t)(hm_node->bitmap[idx] - '0');
+    uint8_t byte = hm_node->bitmap[byte_idx];
+    uint32_t bit = (byte >> bit_idx) & 1;
     out_int(conn, bit);
 }
 
