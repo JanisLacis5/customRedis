@@ -513,4 +513,19 @@ void do_smembers(Conn *conn, std::vector<std::string> &cmd) {
     }
 }
 
-void do_scard(Conn *conn, std::vector<std::string> &cmd) {}
+void do_scard(Conn *conn, std::vector<std::string> &cmd) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!hm_node) {
+        return out_err(conn, "node with the provided key does not exist\n");
+    }
+    if (hm_node->type != T_SET) {
+        return out_err(conn, "key is not of type SET\n");
+    }
+
+    size_t size = hm_size(&hm_node->set);
+    out_int(conn, size);
+}
