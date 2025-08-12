@@ -455,7 +455,24 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
     }
 }
 
-void do_sadd(Conn *conn, std::vector<std::string> &cmd) {}
+void do_sadd(Conn *conn, std::vector<std::string> &cmd) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!hm_node) {
+        hm_node = new_node(cmd[1], T_SET);
+    }
+    if (hm_node->type != T_SET) {
+        return out_err(conn, "key already exists in the database and is not of type SET\n");
+    }
+
+    // Add a hnode without value - key will be the value
+    HNode *in_node = new_node(cmd[2], T_STR);
+    hm_insert(&hm_node->set, in_node);
+}
+
 void do_srem(Conn *conn, std::vector<std::string> &cmd) {}
 void do_smembers(Conn *conn, std::vector<std::string> &cmd) {}
 void do_scard(Conn *conn, std::vector<std::string> &cmd) {}
