@@ -462,6 +462,7 @@ void do_sadd(Conn *conn, std::vector<std::string> &cmd) {
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
         hm_node = new_node(cmd[1], T_SET);
+        hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_SET) {
         return out_err(conn, "key already exists in the database and is not of type SET\n");
