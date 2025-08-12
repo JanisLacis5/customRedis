@@ -11,7 +11,8 @@ enum EntryTypes {
     T_ZSET = 1,
     T_HSET = 2,
     T_LIST = 3,
-    T_SET = 4
+    T_SET = 4,
+    T_BITMAP = 5
 };
 
 // FNV hash

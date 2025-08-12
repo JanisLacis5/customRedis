@@ -1,6 +1,9 @@
 #include <string.h>
 
 #include "redis_functions.h"
+
+#include <assert.h>
+
 #include "buffer_funcs.h"
 #include "data_structures/hashmap.h"
 #include "data_structures/heap.h"
@@ -531,7 +534,38 @@ void do_scard(Conn *conn, std::vector<std::string> &cmd) {
     out_int(conn, size);
 }
 
-void do_setbit(Conn *conn, std::vector<std::string> &cmd) {}
+void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
+    HNode tmp;
+    tmp.key = cmd[1];
+    tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!hm_node) {
+        hm_node = new_node(cmd[1], T_BITMAP);
+        hm_insert(&global_data.db, hm_node);
+    }
+    if (hm_node->type != T_BITMAP) {
+        return out_err(conn, "key already exists in database but is not of type BITMAP\n");
+    }
+
+    int32_t idx = stoi(cmd[2]);
+    if (idx < 0 || idx > (1<<32)) {
+        return out_err(conn, "index must be in range [0, 2048]\n");
+    }
+    if (cmd[3] != "0" && cmd[3] != "1") {
+        return out_err(conn, "bit has to be 0 or 1\n");
+    }
+
+    size_t bitmap_size = hm_node->bitmap.size();
+    if (idx >= bitmap_size) {
+        std::string add(idx - bitmap_size + 1, '0');
+        hm_node->bitmap.append(add);
+    }
+
+    uint8_t prev = hm_node->bitmap[idx] - '0';
+    out_int(conn, prev);
+    hm_node->bitmap[idx] = cmd[3][0];
+}
 
 void do_getbit(Conn *conn, std::vector<std::string> &cmd) {}
 
