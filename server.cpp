@@ -27,7 +27,7 @@
 GlobalData global_data;
 const size_t MAX_MESSAGE_LEN = 32 << 20;
 const uint32_t MAX_TTL_TASKS = 200;
-const uint64_t IDLE_TIMEOUT_MS = 1 * 1000;
+const uint64_t IDLE_TIMEOUT_MS = 10 * 1000;
 const uint64_t READ_TIMEOUT_MS = 10 * 000;
 const uint64_t WRITE_TIMEOUT_MS = 5 * 1000;
 

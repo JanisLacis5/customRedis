@@ -548,9 +548,9 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
         return out_err(conn, "key already exists in database but is not of type BITMAP\n");
     }
 
-    int32_t idx = stoi(cmd[2]);
-    if (idx < 0 || idx > (1<<32)) {
-        return out_err(conn, "index must be in range [0, 2048]\n");
+    int64_t idx = stoll(cmd[2]);
+    if (idx < 0 || idx > UINT32_MAX) {
+        return out_err(conn, "index must be in range [0, 2^32-1]\n");
     }
     if (cmd[3] != "0" && cmd[3] != "1") {
         return out_err(conn, "bit has to be 0 or 1\n");
