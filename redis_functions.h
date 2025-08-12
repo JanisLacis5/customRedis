@@ -49,4 +49,9 @@ void do_srem(Conn *conn, std::vector<std::string> &cmd);
 void do_smembers(Conn *conn, std::vector<std::string> &cmd);
 void do_scard(Conn *conn, std::vector<std::string> &cmd);
 
+// Bitmap functions
+void do_setbit(Conn *conn, std::vector<std::string> &cmd);
+void do_getbit(Conn *conn, std::vector<std::string> &cmd);
+void do_bitcount(Conn *conn, std::vector<std::string> &cmd);
+
 #endif

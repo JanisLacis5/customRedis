@@ -530,3 +530,9 @@ void do_scard(Conn *conn, std::vector<std::string> &cmd) {
     size_t size = hm_size(&hm_node->set);
     out_int(conn, size);
 }
+
+void do_setbit(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_getbit(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {}

@@ -38,6 +38,7 @@ struct HNode {
     ZSet *zset = NULL;
     HMap hset;
     HMap set;
+    std::string bitmap = "";
 };
 
 

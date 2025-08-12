@@ -285,11 +285,16 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
         do_scard(conn, cmd);
     }
 
-    // TODO: implement
     // BITMAP
-    else if (cmd[0] == "setbit") {}
-    else if (cmd[0] == "getbit") {}
-    else if (cmd[0] == "bitcount") {}
+    else if (cmd[0] == "setbit") {
+        do_setbit(conn, cmd);
+    }
+    else if (cmd[0] == "getbit") {
+        do_getbit(conn, cmd);
+    }
+    else if (cmd[0] == "bitcount") {
+        do_bitcount(conn, cmd);
+    }
 
     // HYPERLOGLOG
     else if (cmd[0] == "pfadd") {}
