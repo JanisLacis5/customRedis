@@ -637,22 +637,15 @@ void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
 
     size_t ret = 0;
     if (cmd.size() == 5 && cmd[5] == "BYTE") {
-        for (int64_t byte = start; byte <= end; byte++) {
-            for (int64_t bit = byte * 8; bit < (byte + 1) * 8; bit++) {
-                if (bit >= hm_node->bitmap.size()) {
-                    return out_int(conn, ret);
-                }
-                ret += (hm_node->bitmap[bit] == '1');
+        for (int64_t byte_idx = start; byte_idx <= std::min(end, (int64_t)hm_node->bitmap.size() - 1); byte_idx++) {
+            uint8_t byte = hm_node->bitmap[byte_idx];
+            while (byte) {
+                ret += (byte & 1);
             }
         }
     }
     else {
-        for (int64_t bit = start; bit <= std::min(end, (int64_t)hm_node->bitmap.size() - 1); bit++) {
-            if (bit >= hm_node->bitmap.size()) {
-                return out_int(conn, ret);
-            }
-            ret += (hm_node->bitmap[bit] == '1');
-        }
+        return;
     }
     out_int(conn, ret);
 }
