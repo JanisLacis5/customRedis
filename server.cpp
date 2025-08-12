@@ -189,7 +189,7 @@ static size_t parse_cmd(uint8_t *buf, std::vector<std::string> &cmd) {
 }
 
 static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
-    // GENERAL
+    // GLOBAL DATABASE
     if (cmd.size() == 2 && cmd[0] == "get") {
         do_get(cmd[1], conn);
     }
@@ -203,7 +203,7 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
         do_keys(conn);
     }
 
-    // HASH SET
+    // HASHMAP
     else if (cmd.size() >= 4 && (cmd.size() & 1) == 0 && cmd[0] == "hset") {
         do_hset(conn, cmd);
     }
@@ -229,7 +229,7 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
         do_persist(conn, cmd[1]);
     }
 
-    // ZSETS
+    // SORTED SET
     else if (cmd.size() == 4 && cmd[0] == "zadd") {
         double score = std::stod(cmd[2]);
         do_zadd(conn, cmd[1], score, cmd[3]);
@@ -271,7 +271,7 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
         do_lrange(conn, cmd);
     }
 
-    // SET
+    // HASHSET
     else if (cmd[0] == "sadd") {
         do_sadd(conn, cmd);
     }
