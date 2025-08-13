@@ -37,21 +37,36 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 
 # Directory Structure
 ```text
-customRedis/
-├── CMakeLists.txt
-├── server.h
-├── server.cpp
-├── redis_functions.h
-├── redis_functions.cpp
-├── buffer_funcs.h/.cpp       # request parsing, framing
-├── out_helpers.h/.cpp        # RESP formatting helpers
-├── threadpool.h/.cpp         # worker threads for background tasks
-├── dlist.h/.cpp              # doubly linked lists (timeout queues)
-└── data_structures/
-    ├── hashmap.h/.cpp        # in-memory key→entry storage
-    ├── heap.h/.cpp           # min-heap for TTL management
-    ├── zset.h/.cpp           # sorted-set (AVL tree + heap)
-    ├── avl_tree.h/.cpp       # AVL tree
+├── customRedis
+│   ├── data_structures
+│   │   ├── avl_tree.cpp/.h
+│   │   ├── dlist.cpp/.h
+│   │   ├── hashmap.cpp/.h
+│   │   ├── heap.cpp/.h
+│   │   ├── zset.cpp/.h
+│   ├── tests
+│   │   ├── run_all_tests.sh
+│   │   ├── test_avl.cpp
+│   │   ├── test_avl_deletion.cpp
+│   │   ├── test_cmd.py
+│   │   ├── test_error_cases.py
+│   │   ├── test_expiration.py
+│   │   ├── test_hashmap.cpp
+│   │   ├── test_heap.cpp
+│   │   ├── test_hqueries.py
+│   │   ├── test_performance.py
+│   │   └── test_zset.cpp
+│   ├── utils
+│   │   └── common.h
+│   ├── buffer_funcs.cpp/.h
+│   ├── client.cpp
+│   ├── CMakeLists.txt
+│   ├── out_helpers.cpp/.h
+│   ├── redis_functions.cpp/.h
+│   ├── server.cpp/.h
+│   ├── threadpool.cpp/.h
+│   ├── DOCS.md
+│   └── todo.md
 ```
 
 ---
@@ -159,13 +174,13 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | PERSIST | `PERSIST <key>`          | Remove expiration to make a key permanent |
 
 ## Linked List commands
-| Command | Syntax                       | Description                                                                                     |
-|---------|------------------------------|-------------------------------------------------------------------------------------------------|
-| LPUSH   | `LPUSH <key> <value>`        | Add a new value to the linked list's left side (beginning)                                      |
-| RPUSH   | `RPUSH <key> <value>`        | Add a new value to the linked list's right side (end)                                           |
-| LPOP    | `LPOP <key> <n>`             | Remove the first n values from the linked list                                                  |
-| RPOP    | `RPOP <key> <n>`             | Remove the last n values from the linked list                                                   |
-| LRANGE  | `LRANGE <key> <start> <end>` | Return values in range [start, end] on a 0-indexed list. <br/> Both start and end are included. |
+| Command | Syntax                       | Description                                                                               |
+|---------|------------------------------|-------------------------------------------------------------------------------------------|
+| LPUSH   | `LPUSH <key> <value>`        | Add a new value to the linked list's left side (beginning)                                |
+| RPUSH   | `RPUSH <key> <value>`        | Add a new value to the linked list's right side (end)                                     |
+| LPOP    | `LPOP <key> <n>`             | Remove the first n values from the linked list                                            |
+| RPOP    | `RPOP <key> <n>`             | Remove the last n values from the linked list                                             |
+| LRANGE  | `LRANGE <key> <start> <end>` | Return values in range [start, end] on a 0-indexed list. Both start and end are included. |
 
 ## Hashset commands
 | Command  | Syntax               | Description                      |
@@ -174,6 +189,13 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | SREM     | `SREM <key> <value>` | Removes value from a hashset     |
 | SMEMBERS | `SMEMBERS <key>`     | Returns all members of a hashset |
 | SCARD    | `SCARD <key>`        | Retuns hashset's elment count    |
+
+## Bitmap commands
+| Command  | Syntax                                       | Description                                                                                                                                                                                                              |
+|----------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| SETBIT   | `SETBIT <key> <bit_pos> <bit_value>`         | Sets bit on a bitmap stored at key `key` at position `bit_pos` to `bit_value` (it can be 0 or 1)                                                                                                                         |
+| GETREM   | `SREM <key> <bit_pos>`                       | Retrieves bit from bitmap stored at key `key` at position `bit_pos`                                                                                                                                                      |
+| BITCOUNT | `BITCOUNT <key> [<start> <end> BIT \| BYTE]` | Returns count of set bits on a bitmap stored at key `key`. `start` defaults to 0, `end` defaults to the end of bitmap and for BIT \| BYTE option, BIT is the default. BIT option counts positions as bits, BYTE as bytes |                                                                        |
 
 # Limitations
 - No on-disk persistence (RDB/AOF) yet
