@@ -298,13 +298,13 @@ static void out_buffer(Conn *conn, std::vector<std::string> &cmd) {
 
     // HYPERLOGLOG
     else if (cmd[0] == "pfadd") {
-        do_pfadd(Conn *conn, cmd);
+        do_pfadd(conn, cmd);
     }
     else if (cmd[0] == "pfcount") {
-        do_pfcount(Conn *conn, cmd);
+        do_pfcount(conn, cmd);
     }
     else if (cmd[0] == "pfmerge") {
-        do_pfmerge(Conn *conn, cmd);
+        do_pfmerge(conn, cmd);
     }
     else {
         out_err(conn, "unknown command");
