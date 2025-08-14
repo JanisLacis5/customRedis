@@ -54,4 +54,9 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd);
 void do_getbit(Conn *conn, std::vector<std::string> &cmd);
 void do_bitcount(Conn *conn, std::vector<std::string> &cmd);
 
+// HyperLogLog functions
+void do_pfadd(Conn *conn, std::vector<std::string> &cmd);
+void do_pfcount(Conn *conn, std::vector<std::string> &cmd);
+void do_pfmerge(Conn *conn, std::vector<std::string> &cmd);
+
 #endif

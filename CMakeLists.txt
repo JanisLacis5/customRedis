@@ -23,6 +23,8 @@ add_library(customRedis STATIC
         data_structures/heap.cpp
         data_structures/heap.h
         utils/common.h
+        data_structures/hyperloglog.cpp
+        data_structures/hyperloglog.h
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}

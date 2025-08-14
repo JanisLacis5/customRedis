@@ -666,3 +666,9 @@ void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
     }
     out_int(conn, ret);
 }
+
+void do_pfadd(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_pfcount(Conn *conn, std::vector<std::string> &cmd) {}
+
+void do_pfmerge(Conn *conn, std::vector<std::string> &cmd) {}
