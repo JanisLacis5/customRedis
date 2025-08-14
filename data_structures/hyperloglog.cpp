@@ -1,13 +1,13 @@
 #include "hyperloglog.h"
 
-uint8_t pf_add(HyperLogLog *hll, std::string &val) {
+uint8_t pf_add(std::string *hll, std::string &val) {
 
 }
 
-uint64_t pf_count(HyperLogLog *hll) {
+uint64_t pf_count(std::string *hll) {
 
 }
 
-void pf_merge(HyperLogLog *hll1, HyperLogLog *hll2) {
+void pf_merge(std::string *hll1, std::string *hll2) {
 
 }

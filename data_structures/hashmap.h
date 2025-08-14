@@ -39,6 +39,7 @@ struct HNode {
     HMap hset;
     HMap set;
     std::string bitmap = "";
+    std::string hll = "";
 };
 
 
