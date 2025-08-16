@@ -16,10 +16,17 @@ static HLLHeader* new_hdr(uint8_t encoding) {
     return hdr;
 }
 
-void hll_init(std::string &hll) {
+static void hll_init(std::string &hll) {
     // Create the header
     // TODO: use sparse type as well
     HLLHeader *hdr = new_hdr(HLL_DENSE);
+    hll.assign(HLL_HEADER_SIZE_BYTES + HLL_DENSE_SIZE_BYTES, '\0');
+    memcpy(&hll[0], hdr->magic, 4);
+    memcpy(&hll[4], &hdr->enc, 1);
+    memcpy(&hll[5], hdr->unused, 3);
+    memcpy(&hll[8], hdr->card, 8);
+    hll[15] |= 128; // Set the msb to tell that the cached value is not usable
+    delete hdr;
 }
 
 
