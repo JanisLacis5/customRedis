@@ -112,15 +112,14 @@ static void hm_rehash_help(HMap *hmap) {
     }
 }
 
-static bool h_foreach(HTab *htab, std::vector<std::string> &arg) {
+static bool h_foreach(HTab *htab, std::vector<dstr*> &arg) {
     for (size_t i = 0; i <= htab->mask; i++) {
         if (!htab->tab) {
             continue;
         }
         HNode *curr = htab->tab[i];
         while (curr) {
-            std::string str(curr->key->buf);
-            arg.push_back(str);
+            arg.push_back(curr->key);
             curr = curr->next;
         }
     }
@@ -173,17 +172,20 @@ size_t hm_size(HMap* hmap) {
     return hmap->newer.size + hmap->older.size;
 }
 
-void hm_keys(HMap* hmap, std::vector<std::string> &arg) {
+void hm_keys(HMap* hmap, std::vector<dstr*> &arg) {
     h_foreach(&hmap->newer, arg);
     h_foreach(&hmap->older, arg);
 }
 
-HNode* new_node(std::string& key, uint32_t type) {
+HNode* new_node(dstr *key, uint32_t type) {
     HNode *node = new HNode();
-    node->key = dstr_init(key.size());
-    dstr_append(&node->key, key.data(), key.size());
-    node->hcode = str_hash((uint8_t*)key.data(), key.size());
+    node->key = dstr_init(key->size);
+    dstr_append(&node->key, key->buf, key->size);
+    node->hcode = str_hash((uint8_t*)key->buf, key->size);
     node->type = type;
+    if (type == T_STR) {
+        node->val = dstr_init(0);
+    }
     if (type == T_ZSET) {
         node->zset = new ZSet();
     }

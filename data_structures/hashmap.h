@@ -44,12 +44,12 @@ struct HNode {
 };
 
 
-HNode* new_node(std::string &key, uint32_t type);
+HNode* new_node(dstr *key, uint32_t type);
 HNode* hm_lookup(HMap *hmap, HNode *key);
 void hm_insert(HMap *hmap, HNode *node);
 HNode* hm_delete(HMap *hmap, HNode *key);
 void hm_clear(HMap *hmap);
 size_t hm_size(HMap *hmap);
-void hm_keys(HMap* hmap, std::vector<std::string> &arg);
+void hm_keys(HMap* hmap, std::vector<dstr*> &arg);
 
 #endif
