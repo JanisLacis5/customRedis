@@ -33,14 +33,14 @@ struct HNode {
     size_t heap_idx = -1;
 
     // Possible values
-    std::string val;
+    dstr *val;
     HMap hmap;
     DList list;
     ZSet *zset = NULL;
     HMap hset;
     HMap set;
-    std::string bitmap;
-    std::string hll;
+    dstr *bitmap;
+    dstr *hll;
 };
 
 

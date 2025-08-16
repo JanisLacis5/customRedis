@@ -50,7 +50,7 @@ void do_get(std::string &key, Conn *conn) {
         out_not_found(conn);
     }
     else {
-        out_str(conn, node->val.data(), node->val.size());
+        out_str(conn, node->val->buf, node->val->size);
     }
 }
 
@@ -63,11 +63,12 @@ void do_set(Conn *conn, std::string &key, std::string &value) {
 
     HNode *node = hm_lookup(&global_data.db, &tmp);
     if (node) {
-        node->val = value;
+        dstr_assign(&node->val, value.data(), value.size());
     }
     else {
         HNode *hm_node = new_node(key, T_STR);
-        hm_node->val = value;
+        hm_node->val = dstr_init(value.size());
+        dstr_append(&node->val, value.data(), value.size());
         hm_insert(&global_data.db, hm_node);
     }
     buf_append_u8(conn->outgoing, TAG_NULL);
@@ -261,11 +262,13 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
         if (node->type != T_STR) {
             return out_err(conn, "[hset] node is not of type STR");
         }
-        node->val = cmd[3];
+        node->val = dstr_init(cmd[3].size());
+        dstr_append(&node->val, cmd[3].data(), cmd[3].size());
     }
     else {
         HNode *set_node = new_node(cmd[2], T_STR);
-        set_node->val = cmd[3];
+        set_node->val = dstr_init(cmd[3].size());
+        dstr_append(&set_node->val, cmd[3].data(), cmd[3].size());
         hm_insert(&hm_node->hmap, set_node);
     }
     out_null(conn);
@@ -295,7 +298,7 @@ void do_hget(Conn *conn, std::vector<std::string> &cmd) {
     HNode *node = hm_lookup(&hm_node->hmap, &hm_tmp);
 
     if (node && node->type == T_STR) {
-        return out_str(conn, node->val.data(), node->val.size());
+        return out_str(conn, node->val->buf, node->val->size);
     }
     out_null(conn);
 }
@@ -598,13 +601,14 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
 
 
     // Extend the bitmap if necessary
-    size_t bitmap_size = hm_node->bitmap.size();
+    size_t bitmap_size = hm_node->bitmap->size;
     if (byte_idx >= bitmap_size) {
         hm_node->bitmap.resize(byte_idx + 1, '\0');
+        dstr_append(&hm_node->bitmap, "", byte_idx - bitmap_size + 1);
     }
 
     // Return the previous bit
-    uint8_t byte = hm_node->bitmap[byte_idx];
+    uint8_t byte = hm_node->bitmap->buf[byte_idx];
     uint8_t prev = (byte >> bit_idx) & 1;
     out_int(conn, prev);
 
@@ -615,7 +619,7 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
     else {
         byte &= ~(1u << bit_idx);
     }
-    hm_node->bitmap[byte_idx] = byte;
+    hm_node->bitmap->buf[byte_idx] = byte;
 }
 
 void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
@@ -630,13 +634,13 @@ void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
     }
 
     int64_t bit_idx = stoll(cmd[2]);
-    if (bit_idx < 0 || bit_idx / 8 >= hm_node->bitmap.size()) {
+    if (bit_idx < 0 || bit_idx / 8 >= hm_node->bitmap->size) {
         return out_err(conn, "index outside of range");
     }
     uint32_t byte_idx = bit_idx / 8;
     bit_idx = 7 - (bit_idx % 8);
 
-    uint8_t byte = hm_node->bitmap[byte_idx];
+    uint8_t byte = hm_node->bitmap->buf[byte_idx];
     uint32_t bit = (byte >> bit_idx) & 1;
     out_int(conn, bit);
 }
@@ -659,15 +663,15 @@ void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
     size_t ret = 0;
     if (is_byte_mode) {
         if (start < 0) {
-            start += hm_node->bitmap.size();
+            start += hm_node->bitmap->size;
         }
         if (end < 0) {
-            end += hm_node->bitmap.size();
+            end += hm_node->bitmap->size;
         }
-        end = std::min(end, (int64_t)hm_node->bitmap.size() - 1);
+        end = std::min(end, (int64_t)hm_node->bitmap->size - 1);
 
         for (int64_t byte_idx = start; byte_idx <= end; byte_idx++) {
-            uint8_t byte = hm_node->bitmap[byte_idx];
+            uint8_t byte = hm_node->bitmap->buf[byte_idx];
             while (byte) {
                 ret += (byte & 1);
                 byte >>= 1;
@@ -675,7 +679,7 @@ void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
         }
     }
     else {
-        size_t bit_count = hm_node->bitmap.size() * 8;
+        size_t bit_count = hm_node->bitmap->size * 8;
         if (start < 0) {
             start += bit_count;
         }
@@ -687,7 +691,7 @@ void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
         for (int64_t bit_pos = start; bit_pos <= end; bit_pos++) {
             int64_t byte_idx = bit_pos / 8;
             int64_t bit_idx = 7 - (bit_pos % 8);
-            ret += (hm_node->bitmap[byte_idx] >> bit_idx) & 1;
+            ret += (hm_node->bitmap->buf[byte_idx] >> bit_idx) & 1;
         }
     }
     out_int(conn, ret);
