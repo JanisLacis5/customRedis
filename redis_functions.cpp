@@ -599,11 +599,13 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
     int64_t byte_idx = bit_idx / 8;
     bit_idx = 7 - (bit_idx % 8);
 
-
     // Extend the bitmap if necessary
     size_t bitmap_size = hm_node->bitmap->size;
     if (byte_idx >= bitmap_size) {
-        dstr_resize(&hm_node->bitmap, byte_idx + 1, '\0');
+        uint8_t err = dstr_resize(&hm_node->bitmap, byte_idx + 1, '\0');
+        if (err) {
+            return out_err(conn, "bitmap resize failed");
+        }
     }
 
     // Return the previous bit

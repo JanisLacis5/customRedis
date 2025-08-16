@@ -1,5 +1,6 @@
 #include "dstr.h"
 #include <algorithm>
+#include <cstdio>
 #include <string.h>
 
 dstr* dstr_init(size_t len) {

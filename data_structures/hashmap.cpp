@@ -187,5 +187,8 @@ HNode* new_node(std::string& key, uint32_t type) {
     if (type == T_ZSET) {
         node->zset = new ZSet();
     }
+    if (type == T_BITMAP) {
+        node->bitmap = dstr_init(0);
+    }
     return node;
 }
