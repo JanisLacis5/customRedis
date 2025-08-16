@@ -68,7 +68,7 @@ void do_set(Conn *conn, std::string &key, std::string &value) {
     else {
         HNode *hm_node = new_node(key, T_STR);
         hm_node->val = dstr_init(value.size());
-        dstr_append(&node->val, value.data(), value.size());
+        dstr_append(&hm_node->val, value.data(), value.size());
         hm_insert(&global_data.db, hm_node);
     }
     buf_append_u8(conn->outgoing, TAG_NULL);
@@ -603,8 +603,7 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
     // Extend the bitmap if necessary
     size_t bitmap_size = hm_node->bitmap->size;
     if (byte_idx >= bitmap_size) {
-        hm_node->bitmap.resize(byte_idx + 1, '\0');
-        dstr_append(&hm_node->bitmap, "", byte_idx - bitmap_size + 1);
+        dstr_resize(&hm_node->bitmap, byte_idx + 1, '\0');
     }
 
     // Return the previous bit
