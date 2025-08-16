@@ -2,6 +2,9 @@
 #include <cstdlib>
 
 #include "hashmap.h"
+
+#include <string.h>
+
 #include "server.h"
 #include "zset.h"
 
@@ -34,7 +37,7 @@ static HNode** ht_lookup(HTab *htab, HNode *node) {
     int count = 0;
     while (*slot) {
         HNode *curr = *slot;
-        if (curr->hcode == node->hcode && curr->key == node->key) {
+        if (curr->hcode == node->hcode && !strcmp(node->key->buf, curr->key->buf)) {
             return slot;
         }
         slot = &curr->next;
@@ -116,7 +119,8 @@ static bool h_foreach(HTab *htab, std::vector<std::string> &arg) {
         }
         HNode *curr = htab->tab[i];
         while (curr) {
-            arg.push_back(curr->key);
+            std::string str(curr->key->buf);
+            arg.push_back(str);
             curr = curr->next;
         }
     }
@@ -176,7 +180,8 @@ void hm_keys(HMap* hmap, std::vector<std::string> &arg) {
 
 HNode* new_node(std::string& key, uint32_t type) {
     HNode *node = new HNode();
-    node->key = key;
+    node->key = dstr_init(key.size());
+    dstr_append(&node->key, key.data(), key.size());
     node->hcode = str_hash((uint8_t*)key.data(), key.size());
     node->type = type;
     if (type == T_ZSET) {
@@ -184,8 +189,3 @@ HNode* new_node(std::string& key, uint32_t type) {
     }
     return node;
 }
-
-
-
-
-

@@ -8,7 +8,7 @@
 struct DListNode {
     DListNode *prev = NULL;
     DListNode *next = NULL;
-    char *val = NULL;
+    std::string val = "";
 };
 
 struct DList {

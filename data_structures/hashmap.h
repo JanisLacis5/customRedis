@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "dlist.h"
+#include "dstr.h"
 #include "utils/common.h"
 
 struct HNode;
@@ -27,19 +28,19 @@ struct HMap {
 struct HNode {
     HNode *next = NULL;
     uint64_t hcode = 0; // hash value
-    std::string key = "";
+    dstr *key;
     uint32_t type = 100;
     size_t heap_idx = -1;
 
     // Possible values
-    std::string val = "";
+    std::string val;
     HMap hmap;
     DList list;
     ZSet *zset = NULL;
     HMap hset;
     HMap set;
-    std::string bitmap = "";
-    std::string hll = "";
+    std::string bitmap;
+    std::string hll;
 };
 
 

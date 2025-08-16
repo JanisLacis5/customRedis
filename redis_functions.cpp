@@ -15,7 +15,8 @@
 static const ZSet empty;
 static ZSet* find_zset(HMap *hmap, std::string &key) {
     HNode tmp;
-    tmp.key = key;
+    tmp.key = dstr_init(key.size());
+    dstr_append(&tmp.key, key.data(), key.size());
     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     HNode *node = hm_lookup(hmap, &tmp);
@@ -40,7 +41,8 @@ static bool validate_hmnode(Conn *conn, HNode *hm_node, uint32_t type) {
 
 void do_get(std::string &key, Conn *conn) {
     HNode tmp;
-    tmp.key = key;
+    tmp.key = dstr_init(key.size());
+    dstr_append(&tmp.key, key.data(), key.size());
     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     HNode *node = hm_lookup(&global_data.db, &tmp);
@@ -55,7 +57,8 @@ void do_get(std::string &key, Conn *conn) {
 
 void do_set(Conn *conn, std::string &key, std::string &value) {
     HNode tmp;
-    tmp.key = key;
+    tmp.key = dstr_init(key.size());
+    dstr_append(&tmp.key, key.data(), key.size());
     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     HNode *node = hm_lookup(&global_data.db, &tmp);
@@ -73,8 +76,9 @@ void do_set(Conn *conn, std::string &key, std::string &value) {
 
 void do_del(Conn *conn, std::string &key) {
     HNode tmp;
-    tmp.key = key;
-    tmp.hcode = str_hash((uint8_t*)tmp.key.data(), tmp.key.size());
+    tmp.key = dstr_init(key.size());
+    dstr_append(&tmp.key, key.data(), key.size());
+    tmp.hcode = str_hash((uint8_t*)tmp.key->buf, tmp.key->size);
 
     hm_delete(&global_data.db, &tmp);
     buf_append_u8(conn->outgoing, TAG_NULL);
@@ -94,7 +98,8 @@ void do_keys(Conn *conn) {
 void do_zadd(Conn *conn, std::string &keyspace_key, double &score, std::string &z_key) {
     // Find the zset
     HNode tmp;
-    tmp.key = keyspace_key;
+    tmp.key = dstr_init(keyspace_key.size());
+    dstr_append(&tmp.key, keyspace_key.data(), keyspace_key.size());
     tmp.hcode = str_hash((uint8_t*)keyspace_key.data(), keyspace_key.size());
     HNode *node = hm_lookup(&global_data.db, &tmp);
 
@@ -184,7 +189,8 @@ void do_zrangequery(
 
 void do_expire(Conn *conn, std::string &key, uint32_t ttl_ms) {
     HNode tmp;
-    tmp.key = key;
+    tmp.key = dstr_init(key.size());
+    dstr_append(&tmp.key, key.data(), key.size());
     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     HNode *hnode = hm_lookup(&global_data.db, &tmp);
@@ -198,7 +204,8 @@ void do_expire(Conn *conn, std::string &key, uint32_t ttl_ms) {
 
 void do_ttl(Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t curr_ms) {
     HNode tmp;
-    tmp.key = key;
+    tmp.key = dstr_init(key.size());
+    dstr_append(&tmp.key, key.data(), key.size());
     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     HNode *hnode = hm_lookup(&global_data.db, &tmp);
@@ -212,7 +219,8 @@ void do_ttl(Conn *conn, std::vector<HeapNode> &heap, std::string &key, uint32_t 
 
 void do_persist(Conn *conn, std::string &key) {
     HNode tmp;
-    tmp.key = key;
+    tmp.key = dstr_init(key.size());
+    dstr_append(&tmp.key, key.data(), key.size());
     tmp.hcode = str_hash((uint8_t*)key.data(), key.size());
 
     HNode *hnode = hm_lookup(&global_data.db, &tmp);
@@ -227,7 +235,8 @@ void do_persist(Conn *conn, std::string &key) {
 void do_hset(Conn *conn, std::vector<std::string> &cmd) {
     // Find the hmap node
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -243,7 +252,8 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
 
     // Find the key node in the entry hashmap
     HNode hm_tmp;
-    hm_tmp.key = cmd[2];
+    tmp.key = dstr_init(cmd[2].size());
+    dstr_append(&tmp.key, cmd[2].data(), cmd[2].size());
     hm_tmp.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
     HNode *node = hm_lookup(&hm_node->hmap, &hm_tmp);
 
@@ -263,7 +273,8 @@ void do_hset(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_hget(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     // Find the hashmap in which the hget is being done
@@ -278,7 +289,8 @@ void do_hget(Conn *conn, std::vector<std::string> &cmd) {
 
     // Find the key node in the hashmap
     HNode hm_tmp;
-    hm_tmp.key = cmd[2];
+    hm_tmp.key = dstr_init(cmd[2].size());
+    dstr_append(&hm_tmp.key, cmd[2].data(), cmd[2].size());
     hm_tmp.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
     HNode *node = hm_lookup(&hm_node->hmap, &hm_tmp);
 
@@ -291,7 +303,8 @@ void do_hget(Conn *conn, std::vector<std::string> &cmd) {
 void do_hdel(Conn *conn, std::vector<std::string> &cmd) {
     // Find the hmap node
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
@@ -305,7 +318,8 @@ void do_hdel(Conn *conn, std::vector<std::string> &cmd) {
 
     // Find the key node in the entry hashmap
     HNode hm_tmp;
-    hm_tmp.key = cmd[2];
+    tmp.key = dstr_init(cmd[2].size());
+    dstr_append(&tmp.key, cmd[2].data(), cmd[2].size());
     hm_tmp.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
     HNode *node = hm_delete(&hm_node->hmap, &hm_tmp);
 
@@ -319,7 +333,8 @@ void do_hdel(Conn *conn, std::vector<std::string> &cmd) {
 void do_hgetall(Conn *conn, std::vector<std::string> &cmd) {
     // Find the hmap node
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -338,7 +353,8 @@ void do_hgetall(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -374,7 +390,8 @@ void do_push(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
 
 void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -419,7 +436,8 @@ void do_pop(Conn *conn, std::vector<std::string> &cmd, uint8_t side) {
 
 void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -471,7 +489,8 @@ void do_lrange(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_sadd(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -490,7 +509,8 @@ void do_sadd(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_srem(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -502,7 +522,8 @@ void do_srem(Conn *conn, std::vector<std::string> &cmd) {
     }
 
     HNode key;
-    key.key = cmd[2];
+    key.key = dstr_init(cmd[2].size());
+    dstr_append(&key.key, cmd[1].data(), cmd[1].size());
     key.hcode = str_hash((uint8_t*)cmd[2].data(), cmd[2].size());
     HNode *deleted = hm_delete(&hm_node->set, &key);
     return out_int(conn, (deleted ? 1 : 0));
@@ -510,7 +531,8 @@ void do_srem(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_smembers(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -531,7 +553,8 @@ void do_smembers(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_scard(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -549,7 +572,8 @@ void do_scard(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -596,7 +620,8 @@ void do_setbit(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
@@ -618,7 +643,8 @@ void do_getbit(Conn *conn, std::vector<std::string> &cmd) {
 
 void do_bitcount(Conn *conn, std::vector<std::string> &cmd) {
     HNode tmp;
-    tmp.key = cmd[1];
+    tmp.key = dstr_init(cmd[1].size());
+    dstr_append(&tmp.key, cmd[1].data(), cmd[1].size());
     tmp.hcode = str_hash((uint8_t*)cmd[1].data(), cmd[1].size());
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
