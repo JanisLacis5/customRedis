@@ -202,109 +202,110 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
         do_keys(conn);
     }
 
-    // // HASHMAP
-    // else if (cmd.size() >= 4 && (cmd.size() & 1) == 0 && cmd[0] == "hset") {
-    //     do_hset(conn, cmd);
-    // }
-    // else if (cmd.size() == 3 && cmd[0] == "hget") {
-    //     do_hget(conn, cmd);
-    // }
-    // else if (cmd.size() == 2 && cmd[0] == "hgetall") {
-    //     do_hgetall(conn, cmd);
-    // }
-    // else if (cmd.size() >= 3 && cmd[0] == "hdel") {
-    //     do_hdel(conn, cmd);
-    // }
-    //
-    // // TIME TO LIVE
-    // else if (cmd.size() == 3 && cmd[0] == "expire") {
-    //     uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
-    //     do_expire(conn, cmd[1], ttl_ms);
-    // }
-    // else if (cmd.size() == 2 && cmd[0] == "ttl") {
-    //     do_ttl(conn, global_data.ttl_heap, cmd[1], get_curr_ms());
-    // }
-    // else if (cmd.size() == 2 && cmd[0] == "persist") {
-    //     do_persist(conn, cmd[1]);
-    // }
-    //
-    // // SORTED SET
-    // else if (cmd.size() == 4 && cmd[0] == "zadd") {
-    //     double score = std::stod(cmd[2]);
-    //     do_zadd(conn, cmd[1], score, cmd[3]);
-    // }
-    // else if (cmd.size() == 3 && cmd[0] == "zscore") {
-    //     do_zscore(conn, cmd[1], cmd[2]);
-    // }
-    // else if (cmd.size() == 3 && cmd[0] == "zrem") {
-    //     do_zrem(conn, cmd[1], cmd[2]);
-    // }
-    // else if (cmd[0] == "zquery") {
-    //     double score = std::stod(cmd[2]);
-    //     int32_t offset = std::stoi(cmd[4]);
-    //     uint32_t limit = std::stoi(cmd[5]);
-    //     do_zrangequery(
-    //         conn,
-    //         cmd[1],
-    //         score,
-    //         cmd[3],
-    //         offset,
-    //         limit
-    //     );
-    // }
-    //
-    // // LINKED LIST
-    // else if (cmd[0] == "lpush" && cmd.size() == 3) {
-    //     do_push(conn, cmd, LLIST_SIDE_LEFT);
-    // }
-    // else if (cmd[0] == "rpush" && cmd.size() == 3) {
-    //     do_push(conn, cmd, LLIST_SIDE_RIGHT);
-    // }
-    // else if (cmd[0] == "lpop" && cmd.size() >= 2) {
-    //     do_pop(conn, cmd, LLIST_SIDE_LEFT);
-    // }
-    // else if (cmd[0] == "rpop" && cmd.size() >= 2) {
-    //     do_pop(conn, cmd, LLIST_SIDE_RIGHT);
-    // }
-    // else if (cmd[0] == "lrange" && cmd.size() == 4) {
-    //     do_lrange(conn, cmd);
-    // }
-    //
-    // // HASHSET
-    // else if (cmd[0] == "sadd") {
-    //     do_sadd(conn, cmd);
-    // }
-    // else if (cmd[0] == "srem") {
-    //     do_srem(conn, cmd);
-    // }
-    // else if (cmd[0] == "smembers") {
-    //     do_smembers(conn, cmd);
-    // }
-    // else if (cmd[0] == "scard") {
-    //     do_scard(conn, cmd);
-    // }
-    //
-    // // BITMAP
-    // else if (cmd[0] == "setbit") {
-    //     do_setbit(conn, cmd);
-    // }
-    // else if (cmd[0] == "getbit") {
-    //     do_getbit(conn, cmd);
-    // }
-    // else if (cmd[0] == "bitcount") {
-    //     do_bitcount(conn, cmd);
-    // }
-    //
-    // // HYPERLOGLOG
-    // else if (cmd[0] == "pfadd") {
-    //     do_pfadd(conn, cmd);
-    // }
-    // else if (cmd[0] == "pfcount") {
-    //     do_pfcount(conn, cmd);
-    // }
-    // else if (cmd[0] == "pfmerge") {
-    //     do_pfmerge(conn, cmd);
-    // }
+    // HASHMAP
+    else if (cmd.size() >= 4 && (cmd.size() & 1) == 0 && !strcmp(cmd[0]->buf, "hset")) {
+        do_hset(conn, cmd);
+    }
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "hget")) {
+        do_hget(conn, cmd);
+    }
+    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "hgetall")) {
+        do_hgetall(conn, cmd);
+    }
+    else if (cmd.size() >= 3 && !strcmp(cmd[0]->buf, "hdel")) {
+        do_hdel(conn, cmd);
+    }
+
+    // TIME TO LIVE
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "expire")) {
+        // uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
+        // do_expire(conn, cmd[1], ttl_ms);
+        do_expire(conn, cmd);
+    }
+    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "ttl")) {
+        do_ttl(conn, global_data.ttl_heap, cmd[1], get_curr_ms());
+    }
+    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "persist")) {
+        do_persist(conn, cmd[1]);
+    }
+
+    // SORTED SET
+    else if (cmd.size() == 4 && !strcmp(cmd[0]->buf, "zadd")) {
+        double score = std::stod(cmd[2]);
+        do_zadd(conn, cmd[1], score, cmd[3]);
+    }
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zscore")) {
+        do_zscore(conn, cmd[1], cmd[2]);
+    }
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zrem")) {
+        do_zrem(conn, cmd[1], cmd[2]);
+    }
+    else if (!strcmp(cmd[0]->buf, "zquery")) {
+        double score = std::stod(cmd[2]);
+        int32_t offset = std::stoi(cmd[4]);
+        uint32_t limit = std::stoi(cmd[5]);
+        do_zrangequery(
+            conn,
+            cmd[1],
+            score,
+            cmd[3],
+            offset,
+            limit
+        );
+    }
+
+    // LINKED LIST
+    else if (!strcmp(cmd[0]->buf, "lpush") && cmd.size() == 3) {
+        do_push(conn, cmd, LLIST_SIDE_LEFT);
+    }
+    else if (!strcmp(cmd[0]->buf, "rpush") && cmd.size() == 3) {
+        do_push(conn, cmd, LLIST_SIDE_RIGHT);
+    }
+    else if (!strcmp(cmd[0]->buf, "lpop") && cmd.size() >= 2) {
+        do_pop(conn, cmd, LLIST_SIDE_LEFT);
+    }
+    else if (!strcmp(cmd[0]->buf, "rpop") && cmd.size() >= 2) {
+        do_pop(conn, cmd, LLIST_SIDE_RIGHT);
+    }
+    else if (!strcmp(cmd[0]->buf, "lrange") && cmd.size() == 4) {
+        do_lrange(conn, cmd);
+    }
+
+    // HASHSET
+    else if (!strcmp(cmd[0]->buf, "sadd")) {
+        do_sadd(conn, cmd);
+    }
+    else if (!strcmp(cmd[0]->buf, "srem")) {
+        do_srem(conn, cmd);
+    }
+    else if (!strcmp(cmd[0]->buf, "smembers")) {
+        do_smembers(conn, cmd);
+    }
+    else if (!strcmp(cmd[0]->buf, "scard")) {
+        do_scard(conn, cmd);
+    }
+
+    // BITMAP
+    else if (!strcmp(cmd[0]->buf, "setbit")) {
+        do_setbit(conn, cmd);
+    }
+    else if (!strcmp(cmd[0]->buf, "getbit")) {
+        do_getbit(conn, cmd);
+    }
+    else if (!strcmp(cmd[0]->buf, "bitcount")) {
+        do_bitcount(conn, cmd);
+    }
+
+    // HYPERLOGLOG
+    else if (!strcmp(cmd[0]->buf, "pfadd")) {
+        do_pfadd(conn, cmd);
+    }
+    else if (!strcmp(cmd[0]->buf, "pfcount")) {
+        do_pfcount(conn, cmd);
+    }
+    else if (!strcmp(cmd[0]->buf, "pfmerge")) {
+        do_pfmerge(conn, cmd);
+    }
     else {
         out_err(conn, "unknown command");
     }
