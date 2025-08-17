@@ -367,8 +367,8 @@ void do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
 
     // Find the key node in the entry hashmap
     HNode hm_tmp;
-    tmp.key = dstr_init(field->size);
-    dstr_append(&tmp.key, field->buf, field->size);
+    hm_tmp.key = dstr_init(field->size);
+    dstr_append(&hm_tmp.key, field->buf, field->size);
     hm_tmp.hcode = str_hash((uint8_t*)field->buf, field->size);
     HNode *node = hm_delete(&hm_node->hmap, &hm_tmp);
 
