@@ -110,6 +110,7 @@ void do_zadd(Conn *conn, std::vector<dstr*> &cmd) {
     dstr *key = cmd[1];
     double score = strtod(cmd[2]->buf, NULL);
     dstr *member = cmd[3];
+    printf("score: %f, member: %s\n", score, member->buf);
 
     // Find the zset
     HNode tmp;
@@ -139,6 +140,7 @@ void do_zscore(Conn *conn, std::vector<dstr*> &cmd) {
 
     ZSet *zset = find_zset(&global_data.db, key);
     ZNode *ret = zset_lookup(zset, member);
+
     if (!ret) {
         buf_append_u8(conn->outgoing, TAG_NULL);
         return;

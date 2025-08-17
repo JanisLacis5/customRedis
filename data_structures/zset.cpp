@@ -4,29 +4,23 @@
 #include "zset.h"
 #include "../utils/common.h"
 
-struct HKey {
-    HNode node;
-    dstr *name;
-};
 
-static bool hcmp(HNode *node, HNode *key) {
+static bool hcmp(HNode *node, HNode *keynode) {
     ZNode *znode = container_of(node, ZNode, h_node);
-    HKey *hkey = container_of(key, HKey, node);
-    if (znode->key->size != hkey->name->size) {
+    if (znode->key->size != keynode->key->size) {
         return false;
     }
-    return memcmp(znode->key, hkey->name->buf, znode->key->size) == 0;
+    return memcmp(znode->key, keynode->key->buf, znode->key->size) == 0;
 }
 
 static ZNode* new_znode(double score, dstr *key) {
     ZNode *znode = (ZNode*)malloc(sizeof(ZNode) + key->size);
     avl_init(&znode->avl_node);
-    znode->h_node.next = NULL;
-    znode->h_node.hcode = str_hash((uint8_t*)key->buf, key->size);
+    znode->h_node = *new_node(key, T_STR);
 
     znode->score = score;
-    znode->key->size = key->size;
-    memcpy(znode->key, key->buf, key->size);
+    znode->key = dstr_init(key->size);
+    dstr_append(&znode->key, key->buf, key->size);
 
     return znode;
 }
@@ -58,12 +52,14 @@ static bool zless(ZNode *node, double score, dstr *key) {
 
 void zset_delete(ZSet *zset, ZNode *znode) {
     // Delete from the hashmap and the tree
-    HKey hkey;
-    hkey.name = znode->key;
-    hkey.node.hcode = znode->h_node.hcode;
+    HNode tmp;
+    tmp.key = dstr_init(znode->key->size);
+    dstr_append(&tmp.key, znode->key->buf, znode->key->size);
+    tmp.hcode = znode->h_node.hcode;
+
 
     zset->avl_root = avl_del(&znode->avl_node);
-    hm_delete(&zset->hmap, &hkey.node);
+    hm_delete(&zset->hmap, &tmp);
     free(znode);
 }
 
@@ -104,13 +100,13 @@ ZNode* zset_lookup(ZSet* zset, dstr *key) {
         return NULL;
     }
 
-    HKey hkey;
-    hkey.name = dstr_init(key->size);
-    dstr_append(&hkey.name, key->buf, key->size);
-    hkey.node.hcode = str_hash((uint8_t*)key->buf, key->size);
+    HNode tmp;
+    tmp.key = dstr_init(key->size);
+    dstr_append(&tmp.key, key->buf, key->size);
+    tmp.hcode = str_hash((uint8_t*)key->buf, key->size);
 
     // Do a hashmap lookup
-    HNode *hnode = hm_lookup(&zset->hmap, &hkey.node);
+    HNode *hnode = hm_lookup(&zset->hmap, &tmp);
     return hnode ? container_of(hnode, ZNode, h_node) : NULL;
 }
 
