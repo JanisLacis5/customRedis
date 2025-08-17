@@ -218,40 +218,27 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
 
     // TIME TO LIVE
     else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "expire")) {
-        // uint32_t ttl_ms = std::stoi(cmd[2]) * 1000;
-        // do_expire(conn, cmd[1], ttl_ms);
         do_expire(conn, cmd);
     }
     else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "ttl")) {
-        do_ttl(conn, global_data.ttl_heap, cmd[1], get_curr_ms());
+        do_ttl(conn, cmd, global_data.ttl_heap, get_curr_ms());
     }
     else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "persist")) {
-        do_persist(conn, cmd[1]);
+        do_persist(conn, cmd);
     }
 
     // SORTED SET
     else if (cmd.size() == 4 && !strcmp(cmd[0]->buf, "zadd")) {
-        double score = std::stod(cmd[2]);
-        do_zadd(conn, cmd[1], score, cmd[3]);
+        do_zadd(conn, cmd);
     }
     else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zscore")) {
-        do_zscore(conn, cmd[1], cmd[2]);
+        do_zscore(conn, cmd);
     }
     else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zrem")) {
-        do_zrem(conn, cmd[1], cmd[2]);
+        do_zrem(conn, cmd);
     }
     else if (!strcmp(cmd[0]->buf, "zquery")) {
-        double score = std::stod(cmd[2]);
-        int32_t offset = std::stoi(cmd[4]);
-        uint32_t limit = std::stoi(cmd[5]);
-        do_zrangequery(
-            conn,
-            cmd[1],
-            score,
-            cmd[3],
-            offset,
-            limit
-        );
+        do_zrangequery(conn, cmd);
     }
 
     // LINKED LIST
