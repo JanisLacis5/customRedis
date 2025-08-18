@@ -28,19 +28,19 @@ struct HMap {
 struct HNode {
     HNode *next = NULL;
     uint64_t hcode = 0; // hash value
-    dstr *key;
+    dstr *key = NULL;
     uint32_t type = 100;
     size_t heap_idx = -1;
 
     // Possible values
-    dstr *val;
+    dstr *val = NULL;
     HMap hmap;
     DList list;
     ZSet *zset = NULL;
     HMap hset;
     HMap set;
-    dstr *bitmap;
-    dstr *hll;
+    dstr *bitmap = NULL;
+    dstr *hll = NULL;
 };
 
 

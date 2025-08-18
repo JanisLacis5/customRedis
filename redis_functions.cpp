@@ -117,8 +117,8 @@ void do_zadd(Conn *conn, std::vector<dstr*> &cmd) {
     tmp.key = dstr_init(key->size);
     dstr_append(&tmp.key, key->buf, key->size);
     tmp.hcode = str_hash((uint8_t*)key->buf, key->size);
-    HNode *node = hm_lookup(&global_data.db, &tmp);
 
+    HNode *node = hm_lookup(&global_data.db, &tmp);
     if (!node) {
         node = new_node(key, T_ZSET);
         hm_insert(&global_data.db, node);

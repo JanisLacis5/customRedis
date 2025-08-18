@@ -178,7 +178,7 @@ void hm_keys(HMap* hmap, std::vector<dstr*> &arg) {
 }
 
 HNode* new_node(dstr *key, uint32_t type) {
-    HNode *node = new HNode();
+    HNode *node = (HNode*)malloc(sizeof(HNode));
     node->key = dstr_init(key->size);
     dstr_append(&node->key, key->buf, key->size);
     node->hcode = str_hash((uint8_t*)key->buf, key->size);

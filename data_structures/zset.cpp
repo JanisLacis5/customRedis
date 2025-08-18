@@ -14,7 +14,7 @@ static bool hcmp(HNode *node, HNode *keynode) {
 }
 
 static ZNode* new_znode(double score, dstr *key) {
-    ZNode *znode = (ZNode*)malloc(sizeof(ZNode) + key->size);
+    ZNode *znode = (ZNode*)malloc(sizeof(ZNode));
     avl_init(&znode->avl_node);
     znode->h_node = *new_node(key, T_STR);
 
@@ -56,7 +56,6 @@ void zset_delete(ZSet *zset, ZNode *znode) {
     tmp.key = dstr_init(znode->key->size);
     dstr_append(&tmp.key, znode->key->buf, znode->key->size);
     tmp.hcode = znode->h_node.hcode;
-
 
     zset->avl_root = avl_del(&znode->avl_node);
     hm_delete(&zset->hmap, &tmp);
