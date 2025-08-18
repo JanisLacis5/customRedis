@@ -1,5 +1,28 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 project(RedisClone C CXX)
+
+option(SANITIZE "Enable Address/UB sanitizers" ON)
+
+function(enable_sanitizers target)
+    if (NOT SANITIZE)
+        return()
+    endif()
+
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(${target} PRIVATE
+                -g -O1 -fno-omit-frame-pointer
+                -fsanitize=address,undefined
+                -fno-sanitize-recover=all
+        )
+        target_link_options(${target} PRIVATE
+                -fsanitize=address,undefined
+        )
+    elseif (MSVC)
+        # VS 2019+ with MSVC toolset supports ASan
+        target_compile_options(${target} PRIVATE /Zi /Od /fsanitize=address)
+        target_link_options(${target} PRIVATE /DEBUG /fsanitize=address)
+    endif()
+endfunction()
 
 add_library(customRedis STATIC
     server.cpp
@@ -31,6 +54,7 @@ add_library(customRedis STATIC
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}
 )
+enable_sanitizers(customRedis)
 
 add_executable(redis_server
     server.cpp
@@ -43,3 +67,4 @@ target_include_directories(redis_server PUBLIC
 target_link_libraries(redis_server
     customRedis
 )
+enable_sanitizers(redis_server)
