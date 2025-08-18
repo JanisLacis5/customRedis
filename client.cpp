@@ -6,9 +6,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
-#include <string>
-
 #include "buffer_funcs.h"
+#include "data_structures/dstr.h"
 
 const size_t MAX_MESSAGE_LEN = 4096;
 
@@ -45,7 +44,7 @@ static int write_all(int fd, uint8_t *buf, size_t n) {
     return 0;
 }
 
-static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len) {
+static void print_res(std::vector<uint8_t> &buf, size_t curr, const uint32_t total_len) {
     if (curr >= 4 + total_len) {
         return;
     }
@@ -69,12 +68,11 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
         curr += 4;
 
         // Print the string
-        std::string str;
-        str.resize(str_size);
-        memcpy(str.data(), &buf[curr], str_size);
+        dstr *str = dstr_init(str_size);
+        memcpy(str->buf, &buf[curr], str_size);
         curr += str_size;
 
-        printf("%s %s\n", (tag == TAG_STR ? "(str)" : "(err)"), str.data());
+        printf("%s %s\n", (tag == TAG_STR ? "(str)" : "(err)"), str->buf);
     }
     else if (tag == TAG_DOUBLE) {
         // Read the double
@@ -131,13 +129,13 @@ static int handle_read(int fd) {
     return 0;
 }
 
-static int handle_write(int fd, std::vector<std::string> &query) {
+static int handle_write(int fd, std::vector<dstr*> &query) {
     std::vector<uint8_t> buf;
 
     // Calculate the total write buffer size
     uint32_t total_size = 5;  // initial tag + query.size()
-    for (const std::string &token: query) {
-        total_size += 5 + token.size(); // tag(1) + size(4) + token_len(n)
+    for (const dstr *token: query) {
+        total_size += 5 + token->size; // tag(1) + size(4) + token_len(n)
     }
 
     if (total_size > MAX_MESSAGE_LEN) {
@@ -153,14 +151,14 @@ static int handle_write(int fd, std::vector<std::string> &query) {
     buf_append_u32(buf, (uint32_t)query.size());
 
     // Add each argument
-    for (const std::string &token: query) {
-        uint32_t len = token.size();
+    for (const dstr *token: query) {
+        uint32_t len = token->size;
         // Add tag and len for the current token
         buf_append_u8(buf, TAG_STR);
         buf_append_u32(buf, len);
 
         // Add the value
-        buf_append(buf, (uint8_t*)token.data(), len);
+        buf_append(buf, (uint8_t*)token->buf, len);
     }
 
     return write_all(fd, buf.data(), buf.size());
@@ -184,9 +182,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::vector<std::string> cmd;
+    std::vector<dstr*> cmd;
     for (int i = 1; i < argc; i++) {
-        cmd.push_back(argv[i]);
+        size_t len = strlen(argv[i]);
+        dstr *str = dstr_init(len);
+        dstr_append(&str, argv[i], len);
+        cmd.push_back(str);
     }
     int err = handle_write(fd, cmd);
     if (err) {

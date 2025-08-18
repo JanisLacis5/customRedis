@@ -3,12 +3,12 @@
 
 #include <cstddef>
 #include <stdint.h>
-#include <string>
+#include "dstr.h"
 
 struct DListNode {
     DListNode *prev = NULL;
     DListNode *next = NULL;
-    std::string val = "";
+    dstr *val;
 };
 
 struct DList {

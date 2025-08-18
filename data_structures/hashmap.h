@@ -3,10 +3,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string>
 #include <vector>
-
 #include "dlist.h"
+#include "dstr.h"
 #include "utils/common.h"
 
 struct HNode;
@@ -27,28 +26,27 @@ struct HMap {
 struct HNode {
     HNode *next = NULL;
     uint64_t hcode = 0; // hash value
-    std::string key = "";
+    dstr *key = NULL;
     uint32_t type = 100;
     size_t heap_idx = -1;
 
     // Possible values
-    std::string val = "";
-    HMap hmap;
     DList list;
-    ZSet *zset = NULL;
-    HMap hset;
+    HMap hmap;
     HMap set;
-    std::string bitmap = "";
-    std::string hll = "";
+    ZSet *zset = NULL;
+    dstr *val = NULL;
+    dstr *bitmap = NULL;
+    dstr *hll = NULL;
 };
 
 
-HNode* new_node(std::string &key, uint32_t type);
+HNode* new_node(dstr *key, uint32_t type);
 HNode* hm_lookup(HMap *hmap, HNode *key);
 void hm_insert(HMap *hmap, HNode *node);
-HNode* hm_delete(HMap *hmap, HNode *key);
+uint8_t hm_delete(HMap *hmap, HNode *key);
 void hm_clear(HMap *hmap);
 size_t hm_size(HMap *hmap);
-void hm_keys(HMap* hmap, std::vector<std::string> &arg);
+void hm_keys(HMap* hmap, std::vector<dstr*> &arg);
 
 #endif

@@ -1,8 +1,8 @@
 #ifndef THREADPOOL_H
 #define THREADPOOL_H
 
-#include <stdint.h>
 #include <queue>
+#include <stdint.h>
 #include <pthread.h>
 
 struct ThreadPoolWork {

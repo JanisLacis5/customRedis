@@ -14,15 +14,14 @@ struct ZNode {
     HNode h_node;
 
     double score = 0;
-    size_t key_len = 0;
-    char key[0];
+    dstr *key;
 };
 
-bool zset_insert(ZSet *zset, double score, std::string &key);
-ZNode* zset_lookup(ZSet *zset, std::string &key);
+bool zset_insert(ZSet *zset, double score, dstr *key);
+ZNode* zset_lookup(ZSet *zset, dstr *key);
 void zset_delete(ZSet *zset, ZNode *znode);
 void zset_clear(ZSet *zset);
-ZNode* zset_lower_bound(ZSet *zset, double score, std::string &key);
+ZNode* zset_lower_bound(ZSet *zset, double score, dstr *key);
 ZNode* zset_offset(ZNode *znode, int32_t offset);
 
 #endif

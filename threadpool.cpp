@@ -1,6 +1,5 @@
-#include "threadpool.h"
-
 #include <cstdio>
+#include "threadpool.h"
 
 static void *work(void *arg) {
     ThreadPool *tp = (ThreadPool*)arg;
