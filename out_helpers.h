@@ -2,7 +2,6 @@
 #define OUT_HELPERS_H
 
 #include <vector>
-
 #include "buffer_funcs.h"
 #include "server.h"
 

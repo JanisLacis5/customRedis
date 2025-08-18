@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <stdint.h>
-#include <string>
 #include "dstr.h"
 
 struct DListNode {

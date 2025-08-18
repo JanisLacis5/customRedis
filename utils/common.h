@@ -6,6 +6,20 @@
 // member = id for the field in T that ptr points to
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
+#define max(a,b)             \
+({                           \
+__typeof__ (a) _a = (a); \
+__typeof__ (b) _b = (b); \
+_a > _b ? _a : _b;       \
+})
+
+#define min(a,b)             \
+({                           \
+__typeof__ (a) _a = (a); \
+__typeof__ (b) _b = (b); \
+_a < _b ? _a : _b;       \
+})
+
 enum EntryTypes {
     T_STR = 0,
     T_ZSET = 1,

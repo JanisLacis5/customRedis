@@ -1,10 +1,7 @@
 #include <assert.h>
 #include <cstdlib>
-
-#include "hashmap.h"
-
 #include <string.h>
-
+#include "hashmap.h"
 #include "server.h"
 #include "zset.h"
 

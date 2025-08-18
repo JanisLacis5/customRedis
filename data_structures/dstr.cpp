@@ -1,7 +1,9 @@
-#include "dstr.h"
-#include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <string.h>
+#include "dstr.h"
+#include "utils/common.h"
+
 
 dstr* dstr_init(size_t len) {
     dstr* str = (dstr*)malloc(sizeof(dstr) + len + 1);
@@ -52,7 +54,7 @@ size_t dstr_append(dstr **pstr, char *toadd, size_t toadd_s) {
     size_t lpos = str->size;
     if (str->free < toadd_s) {
         size_t newlen = str->size + str->free + toadd_s;
-        size_t incr = std::min(MAX_PREALOC, newlen);
+        size_t incr = min(MAX_PREALOC, newlen);
 
         newlen += incr;
         str->free = newlen - str->free;

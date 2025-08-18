@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <string>
-
 #include "out_helpers.h"
 
 void out_arr(Conn *conn, uint32_t len) {

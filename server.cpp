@@ -8,8 +8,6 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <string.h>
-#include <string>
-#include <map>
 #include <time.h>
 
 #include "server.h"
@@ -149,11 +147,11 @@ static uint64_t next_timer_ms() {
 
     // Check if there is a smaller entry timeout
     if (!global_data.ttl_heap.empty()) {
-        conn_timeout = std::min(conn_timeout, global_data.ttl_heap[0].val);
+        conn_timeout = min(conn_timeout, global_data.ttl_heap[0].val);
     }
 
     uint64_t poll_timout = conn_timeout - curr;
-    return std::max((uint64_t)0, poll_timout);
+    return max((uint64_t)0, poll_timout);
 }
 
 static size_t parse_cmd(uint8_t *buf, std::vector<dstr*> &cmd) {

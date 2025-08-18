@@ -6,8 +6,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
-#include <string>
-
 #include "buffer_funcs.h"
 #include "data_structures/dstr.h"
 
