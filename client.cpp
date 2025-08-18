@@ -46,7 +46,7 @@ static int write_all(int fd, uint8_t *buf, size_t n) {
     return 0;
 }
 
-static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t total_len) {
+static void print_res(std::vector<uint8_t> &buf, size_t curr, const uint32_t total_len) {
     if (curr >= 4 + total_len) {
         return;
     }
@@ -70,12 +70,11 @@ static void print_res(std::vector<uint8_t> &buf, size_t &curr, const uint32_t to
         curr += 4;
 
         // Print the string
-        std::string str;
-        str.resize(str_size);
-        memcpy(str.data(), &buf[curr], str_size);
+        dstr *str = dstr_init(str_size);
+        memcpy(str->buf, &buf[curr], str_size);
         curr += str_size;
 
-        printf("%s %s\n", (tag == TAG_STR ? "(str)" : "(err)"), str.data());
+        printf("%s %s\n", (tag == TAG_STR ? "(str)" : "(err)"), str->buf);
     }
     else if (tag == TAG_DOUBLE) {
         // Read the double
