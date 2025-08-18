@@ -45,21 +45,20 @@ static HNode** ht_lookup(HTab *htab, HNode *node) {
     return NULL;
 }
 
-static void hn_del_sync(HNode* hnode) {
+static void hn_unlink_sync(HNode* hnode) {
     if (hnode->type == T_ZSET) {
         zset_clear(hnode->zset);
     }
     if (hnode->type == T_HSET) {
         hm_clear(&hnode->hmap);
     }
-    delete hnode;
 }
 
 static void hn_del_wrapper(void *arg) {
-    hn_del_sync((HNode*)arg);
+    hn_unlink_sync((HNode*)arg);
 }
 
-static HNode* ht_delete(HTab* htab, HNode **from) {
+static HNode* ht_unlink(HTab* htab, HNode **from) {
     HNode *to_delete = *from;
     if (!to_delete) {
         return NULL;
@@ -80,7 +79,7 @@ static HNode* ht_delete(HTab* htab, HNode **from) {
         threadpool_produce(&global_data.threadpool, &hn_del_wrapper, to_delete);
     }
     else {
-        hn_del_sync(to_delete);
+        hn_unlink_sync(to_delete);
     }
 
     return to_delete;
@@ -102,7 +101,7 @@ static void hm_rehash_help(HMap *hmap) {
             hmap->migrate_pos++;
             continue;
         }
-        HNode *node = ht_delete(&hmap->older, slot);
+        HNode *node = ht_unlink(&hmap->older, slot);
         ht_insert(&hmap->newer, node);
         nwork++;
     }
@@ -135,16 +134,20 @@ HNode* hm_lookup(HMap *hmap, HNode* key) {
     return slot ? *slot : NULL;
 }
 
-HNode* hm_delete(HMap* hmap, HNode* key) {
+uint8_t hm_delete(HMap* hmap, HNode* key) {
     HNode **slot = ht_lookup(&hmap->older, key);
     if (slot) {
-        return ht_delete(&hmap->older, slot);
+        HNode *del = ht_unlink(&hmap->older, slot);
+        free(del);
+        return 1;
     }
     slot = ht_lookup(&hmap->newer, key);
     if (slot) {
-        return ht_delete(&hmap->newer, slot);
+        HNode *del = ht_unlink(&hmap->newer, slot);
+        free(del);
+        return 1;
     }
-    return NULL;
+    return 0;
 }
 
 void hm_insert(HMap* hmap, HNode* node) {
@@ -179,6 +182,7 @@ void hm_keys(HMap* hmap, std::vector<dstr*> &arg) {
 
 HNode* new_node(dstr *key, uint32_t type) {
     HNode *node = (HNode*)malloc(sizeof(HNode));
+    node->next = NULL;
     node->key = dstr_init(key->size);
     dstr_append(&node->key, key->buf, key->size);
     node->hcode = str_hash((uint8_t*)key->buf, key->size);
@@ -187,7 +191,34 @@ HNode* new_node(dstr *key, uint32_t type) {
         node->val = dstr_init(0);
     }
     if (type == T_ZSET) {
-        node->zset = new ZSet();
+        node->zset = (ZSet*)malloc(sizeof(ZSet));
+    }
+    if (type == T_HSET) {
+        node->hmap.migrate_pos = 0;
+
+        node->hmap.older.tab = NULL;
+        node->hmap.older.mask = 0;
+        node->hmap.older.size = 0;
+
+        node->hmap.newer.tab = NULL;
+        node->hmap.newer.mask = 0;
+        node->hmap.newer.size = 0;
+    }
+    if (type == T_LIST) {
+        node->list.head = NULL;
+        node->list.tail = NULL;
+        node->list.size = 0;
+    }
+    if (type == T_SET) {
+        node->set.migrate_pos = 0;
+
+        node->set.older.tab = NULL;
+        node->set.older.mask = 0;
+        node->set.older.size = 0;
+
+        node->set.newer.tab = NULL;
+        node->set.newer.mask = 0;
+        node->set.newer.size = 0;
     }
     if (type == T_BITMAP) {
         node->bitmap = dstr_init(0);

@@ -58,7 +58,10 @@ void zset_delete(ZSet *zset, ZNode *znode) {
     tmp.hcode = znode->h_node.hcode;
 
     zset->avl_root = avl_del(&znode->avl_node);
-    hm_delete(&zset->hmap, &tmp);
+    uint8_t deleted = hm_delete(&zset->hmap, &tmp);
+    if (!deleted) {
+        printf("[zset] node not found\n");
+    }
     free(znode);
 }
 

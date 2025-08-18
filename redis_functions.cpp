@@ -89,7 +89,10 @@ void do_del(Conn *conn, std::vector<dstr*> &cmd) {
     dstr_append(&tmp.key, key->buf, key->size);
     tmp.hcode = str_hash((uint8_t*)tmp.key->buf, tmp.key->size);
 
-    hm_delete(&global_data.db, &tmp);
+    uint8_t deleted = hm_delete(&global_data.db, &tmp);
+    if (!deleted) {
+        return out_err(conn, "node does not exist");
+    }
     buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
@@ -372,7 +375,10 @@ void do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
     hm_tmp.key = dstr_init(field->size);
     dstr_append(&hm_tmp.key, field->buf, field->size);
     hm_tmp.hcode = str_hash((uint8_t*)field->buf, field->size);
-    HNode *node = hm_delete(&hm_node->hmap, &hm_tmp);
+    uint8_t deleted = hm_delete(&hm_node->hmap, &hm_tmp);
+    if (!deleted) {
+        return out_err(conn, "node does not exist");
+    }
 
     // Delete hmap entry if it's hmap is empty
     if (hm_size(&hm_node->hmap) == 0) {
@@ -423,7 +429,9 @@ void do_push(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
         return out_err(conn, "node with the provided key exists and is not of type LIST");
     }
 
-    DListNode *new_node = new DListNode();
+    DListNode *new_node = (DListNode*)malloc(sizeof(DListNode));
+    new_node->prev = NULL;
+    new_node->next = NULL;
     new_node->val = dstr_init(value->size);
     dstr_append(&new_node->val, value->buf, value->size);
 
@@ -598,8 +606,8 @@ void do_srem(Conn *conn, std::vector<dstr*> &cmd) {
     kkey.key = dstr_init(value->size);
     dstr_append(&kkey.key, value->buf, value->size);
     kkey.hcode = str_hash((uint8_t*)value->buf, value->size);
-    HNode *deleted = hm_delete(&hm_node->set, &kkey);
-    return out_int(conn, (deleted ? 1 : 0));
+    uint8_t deleted = hm_delete(&hm_node->set, &kkey);
+    return out_int(conn, deleted);
 }
 
 void do_smembers(Conn *conn, std::vector<dstr*> &cmd) {
@@ -674,7 +682,7 @@ void do_setbit(Conn *conn, std::vector<dstr*> &cmd) {
     if (bit_idx < 0 || bit_idx > UINT32_MAX) {
         return out_err(conn, "index must be in range [0, 2^32-1]");
     }
-    if (strcmp(bit_value->buf, "0") || strcmp(bit_value->buf, "1")) {
+    if (strcmp(bit_value->buf, "0") && strcmp(bit_value->buf, "1")) {
         return out_err(conn, "bit has to be 0 or 1");
     }
     int64_t byte_idx = bit_idx / 8;
