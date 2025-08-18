@@ -107,7 +107,6 @@ void do_keys(Conn *conn) {
 }
 
 // Adds 1 if node was inserted, 0 if node was updated (this key existed in the set already)
-// void do_zadd(Conn *conn, dstr* &keyspace_key, double &score, dstr* &z_key) {
 void do_zadd(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
@@ -173,9 +172,9 @@ void do_zrem(Conn *conn, std::vector<dstr*> &cmd) {
 
 /*
  *  Conn *conn - connection between server and client
- *  dstr* &keyspace_key - key to zset in the global hashmap
+ *  dstr* key - key to zset in the global hashmap
  *  double score_lb - lower bound for score
- *  dstr* &key_lb - lower bound for key
+ *  dstr* key_lb - lower bound for key
  *  uint32_t offset - how many qualifying tuples to skip before starting to return results
  *  uint32_t limit - the maximum number of pairs to return after applying the offset
  */

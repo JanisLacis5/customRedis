@@ -192,6 +192,17 @@ HNode* new_node(dstr *key, uint32_t type) {
     }
     if (type == T_ZSET) {
         node->zset = (ZSet*)malloc(sizeof(ZSet));
+        node->zset->avl_root = NULL;
+
+        node->zset->hmap.migrate_pos = 0;
+
+        node->zset->hmap.older.tab = NULL;
+        node->zset->hmap.older.mask = 0;
+        node->zset->hmap.older.size = 0;
+
+        node->zset->hmap.newer.tab = NULL;
+        node->zset->hmap.newer.mask = 0;
+        node->zset->hmap.newer.size = 0;
     }
     if (type == T_HSET) {
         node->hmap.migrate_pos = 0;
