@@ -28,11 +28,21 @@ size_t dstr_cap(dstr* str) {
 }
 
 uint32_t dstr_assign(dstr **pstr, const char *toadd, size_t toadd_s) {
-    dstr *str = *pstr;
-    str->free = dstr_cap(str);
-    str->size = 0;
-    str->buf[0] = '\0';
-    return dstr_append(pstr, toadd, toadd_s);
+    dstr *tmp = dstr_init(dstr_cap(*pstr));
+    if (!tmp) {
+        return errno;
+    }
+
+    uint32_t err = dstr_append(&tmp, toadd, toadd_s);
+    if (err) {
+        free(tmp);
+        return err;
+    }
+    
+    dstr *old = *pstr;
+    *pstr = tmp;
+    free(old);
+    return STR_OK;
 }
 
 uint32_t dstr_resize(dstr **pstr, size_t len, unsigned char pad) {
