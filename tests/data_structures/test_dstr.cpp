@@ -24,12 +24,14 @@ static void test_dstr_init(size_t size) {
     // OK
     str = dstr_init(size);
     assert_str(str, 0, size);
+    free(str);
 }
 
 static void test_dstr_cap(size_t size) {
     dstr *str = dstr_init(size);
     size_t str_cap = dstr_cap(str);
     assert(str_cap == size);
+    free(str);
 } 
 
 static void test_dstr_append() {
@@ -37,6 +39,7 @@ static void test_dstr_append() {
     dstr *str = dstr_init(0);
     uint32_t err = dstr_append(&str, "", too_large_size); // "" because error is expected
     assert(err == STR_ERR_TOO_LARGE);
+    assert_str(str, 0, 0);
 
     // OK
     char to_append[] = "just a string";
@@ -46,9 +49,10 @@ static void test_dstr_append() {
     assert(err == STR_OK);
     assert(str->size == to_append_size);
     assert(!strcmp(str->buf, to_append));
+    free(str);
 }
 
-static void test_dstr_resize(size_t resize_to) {
+static void test_dstr_resize_grow(size_t resize_to) {
     // TOO LARGE
     dstr *str = dstr_init(0);
     uint32_t err = dstr_resize(&str, too_large_size, '\0');
@@ -62,15 +66,48 @@ static void test_dstr_resize(size_t resize_to) {
         assert(str->buf[i] == 'j');
     }
     assert(str->buf[resize_to] == '\0');
+    free(str);
 }
 
-static void test_dstr_assign() {
+static void test_dstr_resize_shrink(size_t resize_to) {
+    // TOO LARGE
+    dstr *str = dstr_init(MAX_STR_SIZE);
+    uint32_t err = dstr_resize(&str, too_large_size, '\0');
+    assert(err == STR_ERR_TOO_LARGE);
+    assert_str(str, 0, MAX_STR_SIZE);
 
+    // OK
+    err = dstr_resize(&str, resize_to, 'j');
+    assert(err == STR_OK);
+    for (size_t i = 0; i < resize_to; i++) {
+        assert(str->buf[i] == 'j');
+    }
+    assert(str->buf[resize_to] == '\0');
+    free(str);
+}
+
+static void test_dstr_assign(size_t size) {
+    dstr *str = dstr_init(0);
+
+    // TOO LARGE
+    uint32_t err = dstr_assign(&str, "", too_large_size);
+    assert(err == STR_ERR_TOO_LARGE);
+    assert_str(str, 0, 0);
+
+    // OK
+    char *tmp = (char*)malloc(size + 1);
+    memset(tmp, 'j', size);
+    tmp[size] = '\0';
+
+    err = dstr_assign(&str, tmp, size);
+    assert(err == STR_OK);
+    assert_str(str, size, str->free);
+    free(tmp);
+    free(str);
 }
 
 int main() {
     srand(time(NULL));
-    size_t too_large_size = (1ull << 31);
 
     // Test if the string overall works with different sizes
     for (int len = 0; len < 10; len++) {
@@ -84,10 +121,12 @@ int main() {
 
     // Each function individually
     size_t size_grid[] = {1, 100, (1 << 15), MAX_STR_SIZE};
-    test_dstr_append();
     for (size_t size: size_grid) {
         test_dstr_init(size);
         test_dstr_cap(size);
-        test_dstr_resize(size);
+        test_dstr_resize_grow(size);
+        test_dstr_resize_shrink(size);
+        test_dstr_assign(size);
     }
+    test_dstr_append();
 }
