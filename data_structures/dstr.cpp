@@ -54,7 +54,7 @@ size_t dstr_append(dstr **pstr, char *toadd, size_t toadd_s) {
     size_t lpos = str->size;
     if (str->free < toadd_s) {
         size_t newlen = str->size + str->free + toadd_s;
-        size_t incr = min(MAX_PREALOC, newlen);
+        size_t incr = dmin(MAX_PREALOC, newlen);
 
         newlen += incr;
         str->free = newlen - str->free;

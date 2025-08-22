@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <string.h>
 #include <assert.h>
+#include <cstdio>
 #include "redis_functions.h"
 #include "buffer_funcs.h"
 #include "data_structures/hashmap.h"

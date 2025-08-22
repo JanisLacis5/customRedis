@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 project(RedisClone C CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(SANITIZE "Enable Address/UB sanitizers" ON)
 
 function(enable_sanitizers target)
@@ -53,6 +54,8 @@ add_library(customRedis STATIC
 )
 target_include_directories(customRedis PUBLIC
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/utils
+    ${CMAKE_SOURCE_DIR}/data_structures
 )
 enable_sanitizers(customRedis)
 

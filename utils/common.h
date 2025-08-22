@@ -1,19 +1,21 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdint.h>
+#include <cstddef>
 // ptr = pointer to a struct's member
 // T = type of the enclosing struct
 // member = id for the field in T that ptr points to
 #define container_of(ptr, T, member) ((T *)( (char *)ptr - offsetof(T, member) ))
 
-#define max(a,b)             \
+#define dmax(a,b)             \
 ({                           \
 __typeof__ (a) _a = (a); \
 __typeof__ (b) _b = (b); \
 _a > _b ? _a : _b;       \
 })
 
-#define min(a,b)             \
+#define dmin(a,b)             \
 ({                           \
 __typeof__ (a) _a = (a); \
 __typeof__ (b) _b = (b); \

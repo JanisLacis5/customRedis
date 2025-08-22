@@ -12,11 +12,9 @@
 
 #include "server.h"
 #include "data_structures/dlist.h"
-#include "data_structures/zset.h"
 #include "buffer_funcs.h"
 #include "data_structures/hashmap.h"
 #include "redis_functions.h"
-#include "data_structures/avl_tree.h"
 #include "data_structures/heap.h"
 #include "out_helpers.h"
 #include "utils/common.h"
@@ -147,11 +145,11 @@ static uint64_t next_timer_ms() {
 
     // Check if there is a smaller entry timeout
     if (!global_data.ttl_heap.empty()) {
-        conn_timeout = min(conn_timeout, global_data.ttl_heap[0].val);
+        conn_timeout = dmin(conn_timeout, global_data.ttl_heap[0].val);
     }
 
     uint64_t poll_timout = conn_timeout - curr;
-    return max((uint64_t)0, poll_timout);
+    return dmax((uint64_t)0, poll_timout);
 }
 
 static size_t parse_cmd(uint8_t *buf, std::vector<dstr*> &cmd) {

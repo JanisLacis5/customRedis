@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <string>
+#include <string.h>
 #include "out_helpers.h"
 
 void out_arr(Conn *conn, uint32_t len) {
@@ -29,15 +29,17 @@ void out_not_found(Conn *conn) {
     buf_append_u8(conn->outgoing, TAG_NULL);
 }
 
-void out_err(Conn *conn, const std::string &err_mes) {
+void out_err(Conn *conn, const char *err_mes) {
+    size_t err_mes_size = strlen(err_mes);
+
     // Replace the defalut OK tag with ERR tag
     buf_rem_last_res_code(conn->outgoing);
     buf_append_u32(conn->outgoing, RES_ERR);
 
     // Add error message
     buf_append_u8(conn->outgoing, TAG_ERROR);
-    buf_append_u32(conn->outgoing, err_mes.size());
-    buf_append(conn->outgoing, (uint8_t*)err_mes.data(), err_mes.size());
+    buf_append_u32(conn->outgoing, err_mes_size);
+    buf_append(conn->outgoing, (uint8_t*)err_mes, err_mes_size);
 }
 
 void out_null(Conn *conn) {
