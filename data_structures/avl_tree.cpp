@@ -1,6 +1,6 @@
 #include <assert.h>
 #include "avl_tree.h"
-#include "utils/common.h"
+#include "../utils/common.h"
 
 uint32_t avl_height(AVLNode *node) {
     if (!node) {
