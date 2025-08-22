@@ -1,6 +1,8 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cwchar>
 #include <string.h>
+#include <errno.h>
 #include "dstr.h"
 #include "utils/common.h"
 
@@ -25,7 +27,7 @@ size_t dstr_cap(dstr* str) {
     return str->free + str->size;
 }
 
-uint32_t dstr_assign(dstr **pstr, char *toadd, size_t toadd_s) {
+uint32_t dstr_assign(dstr **pstr, const char *toadd, size_t toadd_s) {
     dstr *str = *pstr;
     str->free = dstr_cap(str);
     str->size = 0;
@@ -57,7 +59,7 @@ uint32_t dstr_resize(dstr **pstr, size_t len, unsigned char pad) {
     return STR_OK;
 }
 
-uint32_t dstr_append(dstr **pstr, char *toadd, size_t toadd_s) {
+uint32_t dstr_append(dstr **pstr, const char *toadd, size_t toadd_s) {
     if (toadd_s + dstr_cap(*pstr) > MAX_STR_SIZE) {
         return STR_ERR_TOO_LARGE;
     }

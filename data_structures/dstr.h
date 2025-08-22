@@ -1,6 +1,5 @@
 #ifndef DSTR_H
 #define DSTR_H
-#include <istream>
 #include <stdint.h>
 #include <cstddef>
 
@@ -22,7 +21,7 @@ struct dstr {
 dstr* dstr_init(size_t len);
 size_t dstr_cap(dstr *str);
 uint32_t dstr_resize(dstr **pstr, size_t len, unsigned char pad);
-uint32_t dstr_assign(dstr **pstr, char *toadd, size_t toadd_s);
-uint32_t dstr_append(dstr **pstr, char *toadd, size_t toadd_s);
+uint32_t dstr_assign(dstr **pstr, const char *toadd, size_t toadd_s);
+uint32_t dstr_append(dstr **pstr, const char *toadd, size_t toadd_s);
 
 #endif
