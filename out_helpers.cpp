@@ -32,7 +32,7 @@ void out_not_found(Conn *conn) {
 void out_err(Conn *conn, const char *err_mes) {
     size_t err_mes_size = strlen(err_mes);
 
-    // Replace the defalut OK tag with ERR tag
+  // Replace the defalut OK tag with ERR tag
     buf_rem_last_res_code(conn->outgoing);
     buf_append_u32(conn->outgoing, RES_ERR);
 

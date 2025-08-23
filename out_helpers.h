@@ -1,8 +1,7 @@
 #ifndef OUT_HELPERS_H
 #define OUT_HELPERS_H
 
-#include <vector>
-#include "buffer_funcs.h"
+#include <string.h>
 #include "server.h"
 
 enum Tags {

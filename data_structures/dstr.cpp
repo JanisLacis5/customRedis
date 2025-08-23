@@ -43,7 +43,6 @@ uint32_t dstr_assign(dstr **pstr, const char *toadd, size_t toadd_s) {
     *pstr = tmp;
     free(old);
     return STR_OK;
-}
 
 uint32_t dstr_resize(dstr **pstr, size_t len, unsigned char pad) {
     if (len > MAX_STR_SIZE) {
@@ -73,6 +72,7 @@ uint32_t dstr_append(dstr **pstr, const char *toadd, size_t toadd_s) {
     if (toadd_s + dstr_cap(*pstr) > MAX_STR_SIZE) {
         return STR_ERR_TOO_LARGE;
     }
+
     dstr *str = *pstr;
     size_t lpos = str->size;
     if (str->free < toadd_s) {
