@@ -80,12 +80,12 @@ uint64_t hll_count(dstr *hll) {
 
 uint8_t hll_add(dstr *hll, dstr *val) {
     uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
-    uint32_t reg_no = hash >> 50; // 64 - REGISTER_COUNT
-    uint64_t experimental = hash << 14; // REGISTER_COUNT
+    uint32_t reg_no = hash >> HLL_Q;
+    uint64_t experimental = hash << HLL_P;
     
     // Count leading zeroes + 1
     uint8_t zeroes = 1;
-    for (; zeroes <= 50; zeroes++) {
+    for (; zeroes <= HLL_Q; zeroes++) {
         if (experimental & (1ull << 63)) {
             break; // 1-bit found
         }
