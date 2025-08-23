@@ -49,4 +49,10 @@
 modules.order
 Module.symvers
 Mkfile.old
-dkms.conf
+kms.conf
+.idea/
+build/
+.cache
+client
+compile_commands.json
+
