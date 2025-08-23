@@ -3,8 +3,10 @@
 #include <stdint.h>
 #include "dstr.h"
 
+const uint32_t REGISTER_CNT = 16384;
 const int32_t HLL_HEADER_SIZE_BYTES = 16;
-const int32_t HLL_DENSE_SIZE_BYTES = 6 * 16384 / 8; // 2^14 (16384) 6 bit registers
+const int32_t HLL_DENSE_SIZE_BYTES = 6 * REGISTER_CNT / 8; // 2^14 (16384) 6 bit registers
+const double BIAS_CORRECTION = 0.7213 / (1. + 1.079 / REGISTER_CNT);
 enum HLLEncoding {
     HLL_DENSE = 0,
     HLL_SPARSE = 1

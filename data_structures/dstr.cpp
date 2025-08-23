@@ -20,7 +20,7 @@ size_t dstr_cap(dstr* str) {
     return str->free + str->size;
 }
 
-size_t dstr_assign(dstr **pstr, char *toadd, size_t toadd_s) {
+size_t dstr_assign(dstr **pstr, const char *toadd, size_t toadd_s) {
     dstr *str = *pstr;
     str->free = dstr_cap(str);
     str->size = 0;
@@ -49,7 +49,7 @@ uint8_t dstr_resize(dstr **pstr, size_t len, unsigned char pad) {
     return 0;
 }
 
-size_t dstr_append(dstr **pstr, char *toadd, size_t toadd_s) {
+size_t dstr_append(dstr **pstr, const char *toadd, size_t toadd_s) {
     dstr *str = *pstr;
     size_t lpos = str->size;
     if (str->free < toadd_s) {
