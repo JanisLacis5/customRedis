@@ -64,7 +64,13 @@ uint64_t hll_count(dstr *hll) {
         }
     }
 
-    return estimate;
+    return estimate + 0.5l; // 0.5l for rounding
 }
 
+uint8_t hll_add(dstr *hll, dstr *val) {
+    
+}
 
+void hll_merge(dstr *hll1, dstr *hll2) {
+
+}

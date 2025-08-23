@@ -1,8 +1,7 @@
 #ifndef OUT_HELPERS_H
 #define OUT_HELPERS_H
 
-#include <vector>
-#include "buffer_funcs.h"
+#include <string.h>
 #include "server.h"
 
 enum Tags {
@@ -26,7 +25,7 @@ void out_int(Conn *conn, uint32_t nr);
 void out_double(Conn *conn, double dbl);
 void out_str(Conn *conn, char *str, uint32_t size);
 void out_not_found(Conn *conn);
-void out_err(Conn *conn, const std::string &err_mes);
+void out_err(Conn *conn, const char *err_mes);
 size_t out_unknown_arr(Conn *conn);
 void out_null(Conn *conn);
 
