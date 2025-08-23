@@ -1,6 +1,6 @@
 #include <vector>
 #include "utils/common.h"
-#include "../data_structures/heap.h"
+#include "data_structures/heap.h"
 
 static size_t heap_left(size_t pos) {
     return pos * 2 + 1;
@@ -35,8 +35,8 @@ void heap_down(std::vector<HeapNode> &heap, size_t pos) {
         size_t right_ch = heap_right(pos);
         uint64_t min_val = node.val;
 
-        if (left_ch < size) min_val = min(min_val, heap[left_ch].val);
-        if (right_ch < size) min_val = min(min_val, heap[right_ch].val);
+        if (left_ch < size) min_val = dmin(min_val, heap[left_ch].val);
+        if (right_ch < size) min_val = dmin(min_val, heap[right_ch].val);
 
         if (node.val == min_val) {
             break;

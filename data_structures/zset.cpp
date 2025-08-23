@@ -2,8 +2,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include "zset.h"
-#include "../utils/common.h"
-#include "../redis_functions.h"
+#include "utils/common.h"
 
 
 static bool hcmp(HNode *node, HNode *keynode) {

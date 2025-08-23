@@ -6,11 +6,11 @@ uint32_t avl_height(AVLNode *node) {
     if (!node) {
         return 0;
     }
-    return 1 + max(avl_height(node->left), avl_height(node->right));
+    return 1 + dmax(avl_height(node->left), avl_height(node->right));
 }
 
 static void update_node(AVLNode *node) {
-    node->height = 1 + max(avl_height(node->left), avl_height(node->right));
+    node->height = 1 + dmax(avl_height(node->left), avl_height(node->right));
     node->size = 1 + avl_size(node->left) + avl_size(node->right);
 }
 
