@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <math.h>
+#include <string.h>
 #include "hyperloglog.h"
 #include "utils/common.h"
 
@@ -46,16 +47,25 @@ static long double estimate_cnt(dstr *hll) {
     return pref * (1.0l / sum);
 }
 
-void hll_init(dstr *hll) { // assumes hll not initialized (hll == NULL)
-    hll = dstr_init(HLL_HEADER_SIZE_BYTES + HLL_DENSE_SIZE_BYTES);
+void hll_init(dstr **hll_p) { // assumes hll not initialized (hll == NULL)
+    dstr *hll = dstr_init(HLL_HEADER_SIZE_BYTES + HLL_DENSE_SIZE_BYTES);
     
+    // This is not a typical string so the size is set and there are no free characters
+    hll->size = hll->free;
+    hll->free = 0;
+
+    // Zero-out all registers
+    memset(hll->buf + HLL_HEADER_SIZE_BYTES, 0, HLL_DENSE_SIZE_BYTES);
+
     // Create the header
-    dstr_append(&hll, "HYLL", 4);
+    dstr_append(&hll, "HYLL", 4); 
     hll->buf[4] = HLL_DENSE;
     for (uint32_t i = 8; i < 16; i++) {
         hll->buf[i] = 0;
     }
     hll->buf[15] |= (1u << 7); // set the msb so the cached cardinality is invalid
+    
+    *hll_p = hll;
 }
 
 uint64_t hll_count(dstr *hll) {
