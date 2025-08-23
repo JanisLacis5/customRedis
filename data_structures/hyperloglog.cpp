@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <math.h>
 #include "hyperloglog.h"
+#include "utils/common.h"
 
 static inline uint8_t get_reg(dstr *hll, uint32_t reg_no) {
 
@@ -24,6 +25,14 @@ static uint64_t get_cache(dstr *hll) {
 
 static void set_cache(dstr *hll, uint64_t value) {
 
+}
+
+static void invalidate_cache(dstr *hll) {
+    hll->buf[15] |= (1 << 7);
+}
+
+static void validate_cache(dstr *hll) {
+    hll->buf[15] &= ~(1 << 7);
 }
 
 static long double estimate_cnt(dstr *hll) {
@@ -63,12 +72,35 @@ uint64_t hll_count(dstr *hll) {
             estimate = logl((long double)REGISTER_CNT / zero_regs) * REGISTER_CNT;
         }
     }
+    estimate += 0.5l; // 0.5l for rounding when casted to int
 
-    return estimate + 0.5l; // 0.5l for rounding
+    set_cache(hll, (uint64_t)estimate);
+    return estimate;
 }
 
 uint8_t hll_add(dstr *hll, dstr *val) {
+    uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
+    uint32_t reg_no = hash >> 50; // 64 - REGISTER_COUNT
+    uint64_t experimental = hash << 14; // REGISTER_COUNT
     
+    // Count leading zeroes + 1
+    uint8_t zeroes = 1;
+    for (; zeroes <= 50; zeroes++) {
+        if (experimental & (1ull << 63)) {
+            break; // 1-bit found
+        }
+        experimental <<= 1;
+    }
+
+    uint8_t reg = get_reg(hll, reg_no);
+    if (reg < zeroes) {
+        set_reg(hll, reg_no, zeroes);
+        invalidate_cache(hll); // cached value is not valid because hll has changed 
+        return 1;
+    }
+        
+    validate_cache(hll); // cached value is valid because hll did not change
+    return 0;
 }
 
 void hll_merge(dstr *hll1, dstr *hll2) {
