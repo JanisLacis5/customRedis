@@ -11,10 +11,7 @@ static inline uint8_t get_reg(dstr *hll, uint32_t reg_no) {
     uint8_t fb = 6 * reg_no % 8; // first bit idx in the byte (lsb = 0)
     
     uint32_t buf0 = hll->buf[b0];
-    uint32_t buf1 = 0;
-    if (b0 + 1 < hll->size) {
-        buf1 = hll->buf[b0 + 1];
-    }
+    uint32_t buf1 = hll->buf[b0 + 1]; // wont overflow because there is '\0' at hll->size
 
     // Get the register at the 6 lsb + garbage at 2 msb
     uint32_t reg = (buf0 >> fb) | (buf1 << (8 - fb));
@@ -28,18 +25,12 @@ static inline void set_reg(dstr *hll, uint32_t reg_no, uint32_t value) {
     uint8_t fb = 6 * reg_no % 8;
 
     uint32_t buf0 = hll->buf[b0];
-    uint32_t buf1 = 0;
-    if (b0 + 1 < hll->size) {
-        buf1 = hll->buf[b0 + 1];
-    }
+    uint32_t buf1 = hll->buf[b0 + 1];
 
     buf0 &= ~(0x3F << fb);
     buf0 |= value << fb;
     hll->buf[b0] = buf0 & UINT8_MAX; // clamp the output to 8 bit int
 
-    if (b0 + 1 >= hll->size) {
-        return;
-    }
     buf1 &= ~(0x3F >> (8 - fb));
     buf1 |= value >> (8 - fb);
     hll->buf[b0 + 1] = buf1 & UINT8_MAX;
