@@ -26,7 +26,15 @@ static void validate_cache(dstr *hll) {
 }
 
 static void set_cache(dstr *hll, uint64_t value) {
-
+    assert(value < (1ull << 63)); // Value has to fit in 63 bits
+    
+    // Because value fits in 63 bits, msb of the value will be a 0-bit therefore
+    // cache flag will be unset which means that it is valid (expected)
+    for (uint8_t i = 8; i < 16; i++) {
+        // Clear the byte
+        hll->buf[i] = value & 0xFF;
+        value >>= 8;
+    }
 }
 
 static uint64_t get_cache(dstr *hll) {
