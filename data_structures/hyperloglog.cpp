@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 #include "hyperloglog.h"
 #include "utils/common.h"
 
@@ -10,6 +11,33 @@ static inline uint8_t get_reg(dstr *hll, uint32_t reg_no) {
 
 static inline void set_reg(dstr *hll, uint32_t req_no, uint32_t value) {
 
+}
+
+static bool cache_valid(dstr *hll) {
+    return !(hll->buf[15] & (1u << 7));
+}
+
+static void invalidate_cache(dstr *hll) {
+    hll->buf[15] |= (1 << 7);
+}
+
+static void validate_cache(dstr *hll) {
+    hll->buf[15] &= ~(1 << 7);
+}
+
+static void set_cache(dstr *hll, uint64_t value) {
+
+}
+
+static uint64_t get_cache(dstr *hll) {
+    assert(cache_valid(hll)); // if cache is invalid, this function returns garbage
+    
+    uint64_t cache = 0;
+    for (uint8_t i = 0; i < 8; i++) {
+        cache |= (uint64_t)hll->buf[8 + i] << (8 * i);
+    }
+    
+    return cache;
 }
 
 static uint32_t cnt_zero_regs(dstr *hll) {
@@ -22,26 +50,6 @@ static uint32_t cnt_zero_regs(dstr *hll) {
     }
 
     return zero_reg_cnt;
-}
-
-static bool cache_valid(dstr *hll) {
-    return !(hll->buf[15] & (1u << 7));
-}
-
-static uint64_t get_cache(dstr *hll) {
-
-}
-
-static void set_cache(dstr *hll, uint64_t value) {
-
-}
-
-static void invalidate_cache(dstr *hll) {
-    hll->buf[15] |= (1 << 7);
-}
-
-static void validate_cache(dstr *hll) {
-    hll->buf[15] &= ~(1 << 7);
 }
 
 static long double estimate_cnt(dstr *hll) {
