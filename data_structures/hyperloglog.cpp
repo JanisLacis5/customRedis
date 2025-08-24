@@ -23,8 +23,26 @@ static inline uint8_t get_reg(dstr *hll, uint32_t reg_no) {
     return reg & UINT8_MAX;
 } 
 
-static inline void set_reg(dstr *hll, uint32_t req_no, uint32_t value) {
+static inline void set_reg(dstr *hll, uint32_t reg_no, uint32_t value) {
+    uint32_t b0 = 6 * reg_no / 8 + HLL_HEADER_SIZE_BYTES;
+    uint8_t fb = 6 * reg_no % 8;
 
+    uint32_t buf0 = hll->buf[b0];
+    uint32_t buf1 = 0;
+    if (b0 + 1 < hll->size) {
+        buf1 = hll->buf[b0 + 1];
+    }
+
+    buf0 &= ~(0x3F << fb);
+    buf0 |= value << fb;
+    hll->buf[b0] = buf0 & UINT8_MAX; // clamp the output to 8 bit int
+
+    if (b0 + 1 >= hll->size) {
+        return;
+    }
+    buf1 &= ~(0x3F >> (8 - fb));
+    buf1 |= value >> (8 - fb);
+    hll->buf[b0 + 1] = buf1 & UINT8_MAX;
 }
 
 static bool cache_valid(dstr *hll) {
