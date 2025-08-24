@@ -6,8 +6,22 @@
 #include "utils/common.h"
 
 static inline uint8_t get_reg(dstr *hll, uint32_t reg_no) {
+    // Get the position of the byte where the first bit of the register is located
+    uint32_t b0 = 6 * reg_no / 8 + HLL_HEADER_SIZE_BYTES;
+    uint8_t fb = 6 * reg_no % 8; // first bit idx in the byte (lsb = 0)
+    
+    uint32_t buf0 = hll->buf[b0];
+    uint32_t buf1 = 0;
+    if (b0 + 1 < hll->size) {
+        buf1 = hll->buf[b0 + 1];
+    }
 
-}
+    // Get the register at the 6 lsb + garbage at 2 msb
+    uint32_t reg = (buf0 >> fb) | (buf1 << (8 - fb));
+    
+    // Clamp the output to uint8_t 
+    return reg & UINT8_MAX;
+} 
 
 static inline void set_reg(dstr *hll, uint32_t req_no, uint32_t value) {
 
