@@ -160,6 +160,18 @@ uint8_t hll_add(dstr *hll, dstr *val) {
     return 0;
 }
 
-void hll_merge(dstr *hll1, dstr *hll2) {
-
+void hll_merge(dstr *dest, dstr *src) {
+    bool changed = false;
+    for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
+        uint8_t reg1 = get_reg(dest, reg_no);
+        uint8_t reg2 = get_reg(src, reg_no);
+        if (reg1 < reg2) {
+            changed = true;
+        }
+        set_reg(dest, reg_no, dmax(reg1, reg2));
+    }
+    if (changed) {
+        invalidate_cache(dest);
+    }
 }
+
