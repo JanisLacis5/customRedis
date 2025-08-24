@@ -13,7 +13,15 @@ static inline void set_reg(dstr *hll, uint32_t req_no, uint32_t value) {
 }
 
 static uint32_t cnt_zero_regs(dstr *hll) {
+    uint32_t zero_reg_cnt = 0;
+    for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
+        uint8_t reg = get_reg(hll, reg_no);
+        if (!reg) {
+            zero_reg_cnt++;
+        }
+    }
 
+    return zero_reg_cnt;
 }
 
 static bool cache_valid(dstr *hll) {
