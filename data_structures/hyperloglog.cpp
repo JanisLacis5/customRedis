@@ -5,6 +5,7 @@
 #include "hyperloglog.h"
 #include "utils/common.h"
 
+// === GENERAL HELPER FUNCTIONS ===
 static uint8_t get_enc(dstr *hll) {
     return hll->buf[4];
 }
@@ -13,6 +14,66 @@ static void set_enc(dstr *hll, uint8_t enc) {
     hll->buf[4] = enc;
 }
 
+static bool cache_valid(dstr *hll) {
+    return !(hll->buf[15] & (1u << 7));
+}
+
+static void invalidate_cache(dstr *hll) {
+    hll->buf[15] |= (1 << 7);
+}
+
+static bool is_val(uint8_t flag) {
+    return flag & (1u << 7);
+}
+
+static bool is_zero(uint8_t flag) {
+    return !(flag & (1u << 7)) && !(flag & (1u << 6));
+}
+
+static uint8_t val_value(uint8_t flag) {
+    flag &= ~(1u << 7);
+    return (flag >> 2) + 1;
+}
+
+static uint8_t val_cnt(uint8_t flag) {
+    flag &= ~(1u << 7);
+    return (flag & 3) + 1;
+}
+
+static uint8_t zero_cnt(uint8_t flag) {
+    return flag + 1;
+}
+
+static uint32_t xzero_cnt(uint8_t msb, uint8_t lsb) {
+    msb &= ~(1u << 6);
+    uint32_t cnt = (msb << 8) | lsb;
+    return cnt + 1;
+}
+
+static void set_cache(dstr *hll, uint64_t value) {
+    assert(value < (1ull << 63)); // Value has to fit in 63 bits
+    
+    // Because value fits in 63 bits, msb of the value will be a 0-bit therefore
+    // cache flag will be unset which means that it is valid (expected)
+    for (uint8_t i = 8; i < 16; i++) {
+        // Clear the byte
+        hll->buf[i] = value & 0xFF;
+        value >>= 8;
+    }
+}
+
+static uint64_t get_cache(dstr *hll) {
+    assert(cache_valid(hll)); // if cache is invalid, this function returns garbage
+    
+    uint64_t cache = 0;
+    for (uint8_t i = 0; i < 8; i++) {
+        cache |= (uint64_t)hll->buf[8 + i] << (8 * i);
+    }
+    
+    return cache;
+}
+
+// === DENSE HELPER FUNCTIONS ===
 static inline uint8_t get_reg(dstr *hll, uint32_t reg_no) {
     // Get the position of the byte where the first bit of the register is located
     uint32_t b0 = 6 * reg_no / 8 + HLL_HEADER_SIZE_BYTES;
@@ -44,39 +105,15 @@ static inline void set_reg(dstr *hll, uint32_t reg_no, uint32_t value) {
     hll->buf[b0 + 1] = buf1 & UINT8_MAX;
 }
 
-static bool cache_valid(dstr *hll) {
-    return !(hll->buf[15] & (1u << 7));
-}
-
-static void invalidate_cache(dstr *hll) {
-    hll->buf[15] |= (1 << 7);
-}
-
-static void validate_cache(dstr *hll) {
-    hll->buf[15] &= ~(1 << 7);
-}
-
-static void set_cache(dstr *hll, uint64_t value) {
-    assert(value < (1ull << 63)); // Value has to fit in 63 bits
-    
-    // Because value fits in 63 bits, msb of the value will be a 0-bit therefore
-    // cache flag will be unset which means that it is valid (expected)
-    for (uint8_t i = 8; i < 16; i++) {
-        // Clear the byte
-        hll->buf[i] = value & 0xFF;
-        value >>= 8;
+static uint8_t add_dense(dstr *hll, uint32_t reg_no, uint8_t val) {
+    uint8_t reg = get_reg(hll, reg_no);
+    if (reg < val) {
+        set_reg(hll, reg_no, val);
+        invalidate_cache(hll); // cached value is not valid because hll has changed 
+        return 1;
     }
-}
 
-static uint64_t get_cache(dstr *hll) {
-    assert(cache_valid(hll)); // if cache is invalid, this function returns garbage
-    
-    uint64_t cache = 0;
-    for (uint8_t i = 0; i < 8; i++) {
-        cache |= (uint64_t)hll->buf[8 + i] << (8 * i);
-    }
-    
-    return cache;
+    return 0; 
 }
 
 static uint32_t cnt_zero_regs(dstr *hll) {
@@ -91,7 +128,7 @@ static uint32_t cnt_zero_regs(dstr *hll) {
     return zero_reg_cnt;
 }
 
-static long double estimate_cnt_d(dstr *hll) {  // for dense
+static long double estimate_cnt_d(dstr *hll) {
     long double sum = 0.0l;
     for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
         uint8_t curr_reg = get_reg(hll, reg_no);
@@ -100,43 +137,6 @@ static long double estimate_cnt_d(dstr *hll) {  // for dense
     
     long double pref = BIAS_CORRECTION * REGISTER_CNT * REGISTER_CNT;
     return pref * (1.0l / sum);
-}
-
-static long double estimate_cnt_s(dstr *hll) { // for sparse
-    long double sum = 0.0l;
-    for (uint32_t flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
-        long double val = 1.0l;
-        uint32_t flag = hll->buf[flag_no];
-        uint32_t cnt = 0;
-
-        if (flag & (1u << 7)) { // VAL
-            flag &= ~(1u << 7);
-            cnt = (flag & 3) + 1;
-            uint32_t flag_val = (flag >> 2) + 1;
-            val = 1.0l / (1ull << flag_val);
-        } 
-        else if (flag & (1u << 6)) { // XZERO
-            flag &= ~(1u << 6);
-            cnt = flag << 8;
-            flag = hll->buf[++flag_no];
-            cnt |= flag;
-            cnt++;
-        }
-        else { // ZERO
-            cnt = flag + 1;
-        }
-        sum += val * cnt;
-    }
-    
-    long double pref = BIAS_CORRECTION * REGISTER_CNT * REGISTER_CNT;
-    return pref * (1.0l / sum); 
-}
-
-static long double estimate_cnt(dstr *hll) {
-    if (get_enc(hll) == HLL_DENSE) {
-        return estimate_cnt_d(hll);
-    }
-    return estimate_cnt_s(hll);
 }
 
 static void dense_init(dstr **target) {
@@ -172,24 +172,19 @@ static void densify(dstr **phll) {
         uint32_t flag = hll->buf[flag_no];
         uint32_t cnt = 0;
 
-        if (flag & (1u << 7)) { // VAL flag
-            flag &= ~(1u << 7);  // remove the 1 that identifies the flag
-            uint8_t val = (flag >> 2) + 1;
-            cnt = (flag & 3) + 1;
+        if (is_val(flag)) { 
+            uint8_t val = val_value(flag);
+            cnt = val_cnt(flag);
             while (cnt--) {
                 set_reg(dhll, reg_no, val);
                 reg_no++;
             }
         }
-        else if (flag & (1u << 6)) { // XZERO flag
-            flag &= ~(1u << 6); // remove the 01 that identifies the flag
-            cnt = flag << 8;
-            flag = hll->buf[++flag_no];
-            cnt |= flag;
-            cnt++;
+        else if (is_zero(flag)) {
+            cnt = zero_cnt(flag);
         }
-        else { // ZERO flag
-            cnt = flag + 1;
+        else { // XZERO
+            cnt = xzero_cnt(flag, hll->buf[++flag_no]);
         }
         reg_no += cnt;
     }
@@ -197,6 +192,68 @@ static void densify(dstr **phll) {
     *phll = dhll;
 }
 
+// === SPARSE HELPER FUNCTIONS ===
+static long double estimate_cnt_s(dstr *hll) {
+    long double sum = 0.0l;
+    for (uint32_t flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
+        long double val = 1.0l;
+        uint32_t flag = hll->buf[flag_no];
+        uint32_t cnt = 0;
+
+        if (is_val(flag)) {
+            uint32_t flag_val = val_value(flag);
+            cnt = val_cnt(flag);
+            val = 1.0l / (1ull << flag_val);
+        }
+        else if (is_zero(flag)) {
+            cnt = zero_cnt(flag);
+        }        
+        else { // XZERO
+            cnt = xzero_cnt(flag, hll->buf[++flag_no]);
+        }
+        sum += val * cnt;
+    }
+    
+    long double pref = BIAS_CORRECTION * REGISTER_CNT * REGISTER_CNT;
+    return pref * (1.0l / sum); 
+}
+
+static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
+    // Both inclusive
+    uint32_t lb = 0;
+    uint32_t ub = 0;
+
+    for (uint32_t flag_no = 0; flag_no < hll->size; flag_no++) {
+        uint8_t flag = hll->buf[flag_no];
+        uint32_t cnt = 0;
+        uint32_t value = 0;
+
+        if (is_val(flag)) {
+            cnt = val_cnt(flag);
+            value = val_value(flag);
+            if (value > 32) { // VAL flag can only represent values 1...32
+                densify(&hll);
+                return add_dense(hll, reg_no, val);
+            }
+        }
+        else if (is_zero(flag)) {
+            cnt = zero_cnt(flag);
+        }
+        else { // XZERO
+            cnt = xzero_cnt(flag, hll->buf[++flag_no]);
+        }
+        
+        ub = lb + cnt - 1;
+        
+        if (lb <= reg_no && reg_no <= ub) {
+            // TODO: implement the main logic here
+
+        }
+        lb = ub + 1;
+    }
+}
+
+// === API ===
 void hll_init(dstr **hll_p) { // assumes hll not initialized (hll == NULL)
     dstr *hll = dstr_init(HLL_HEADER_SIZE_BYTES + 2); // 2 bytes for XZERO flag
     memset(hll->buf, 0, HLL_HEADER_SIZE_BYTES + 2); 
@@ -217,6 +274,14 @@ void hll_init(dstr **hll_p) { // assumes hll not initialized (hll == NULL)
     hll->buf[hll->size] = '\0'; 
 
     *hll_p = hll;
+}
+
+// Helper for choosing the estimate helper function
+static long double estimate_cnt(dstr *hll) {
+    if (get_enc(hll) == HLL_DENSE) {
+        return estimate_cnt_d(hll);
+    }
+    return estimate_cnt_s(hll);
 }
 
 uint64_t hll_count(dstr *hll) {
@@ -240,52 +305,6 @@ uint64_t hll_count(dstr *hll) {
     return estimate;
 }
 
-uint8_t add_dense(dstr *hll, uint32_t reg_no, uint8_t val) {
-    uint8_t reg = get_reg(hll, reg_no);
-    if (reg < val) {
-        set_reg(hll, reg_no, val);
-        invalidate_cache(hll); // cached value is not valid because hll has changed 
-        return 1;
-    }
-
-    validate_cache(hll); // cached value is valid because hll did not change
-    return 0; 
-}
-
-uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
-    // Both inclusive
-    uint32_t lb = 0;
-    uint32_t ub = 0;
-
-    for (uint32_t flag_no = 0; flag_no < hll->size; flag_no++) {
-        uint8_t flag = hll->buf[flag_no];
-        uint32_t cnt = 0;
-        uint32_t value = 0;
-
-        if (flag & (1u << 7)) { // VAL
-            flag &= ~(1u << 7);
-            cnt = (flag & 3) + 1;
-            value = (flag >> 2) + 1;
-        }
-        else if (flag & (1u << 6)) { // XZERO
-            flag &= ~(1u << 6);
-            cnt = flag << 8;
-            flag = hll->buf[++flag_no];
-            cnt |= flag;
-            cnt++;
-        }
-        else { // ZERO
-            cnt = flag;
-        }
-        
-        ub = lb + cnt - 1;
-        
-        if (lb <= reg_no && reg_no <= ub) {
-            // TODO: implement the main logic here
-        }
-        lb = ub + 1;
-    }
-}
 
 uint8_t hll_add(dstr *hll, dstr *val) {
     uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
