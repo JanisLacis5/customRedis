@@ -371,11 +371,25 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
         }
 
         if (p + 1 < hll_end && is_val(*(p + 1))) {
-            uint8_t *v1 = p;
-            uint8_t *v2 = p+1;
-
+            uint8_t v1 = val_value(*p);
+            uint8_t v2 = val_value(*(p+1));
+            
+            if (v1 == v2) {
+                uint8_t len = val_cnt(*p) + val_cnt(*(p + 1));
+                if (len <= 4) {
+                    *p &= 0;
+                    *p = (1u << 7) | (v1 << 2) | len;
+                    memmove(p, p+1, hll_end - p);
+                    hll->buf[--hll->size] = '\0';
+                    hll->free++;
+                    continue;
+                }
+            }
         }
+        p++;
     }
+    invalidate_cache(hll);
+    return 1;
 }
 
 // === API ===
