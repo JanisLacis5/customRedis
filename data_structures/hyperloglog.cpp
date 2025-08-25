@@ -102,8 +102,34 @@ static long double estimate_cnt_d(dstr *hll) {  // for dense
     return pref * (1.0l / sum);
 }
 
-static long double estimate_cnt_s(dstr *hll) {
+static long double estimate_cnt_s(dstr *hll) { // for sparse
+    long double sum = 0.0l;
+    for (uint32_t flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
+        long double val = 1.0l;
+        uint32_t flag = hll->buf[flag_no];
+        uint32_t cnt = 0;
 
+        if (flag & (1u << 7)) { // VAL
+            flag &= ~(1u << 7);
+            cnt = (flag & 3) + 1;
+            uint32_t flag_val = (flag >> 2) + 1;
+            val = 1.0l / (1ull << flag_val);
+        } 
+        else if (flag & (1u << 6)) { // XZERO
+            flag &= ~(1u << 6);
+            cnt = flag << 8;
+            flag = hll->buf[++flag_no];
+            cnt |= flag;
+            cnt++;
+        }
+        else { // ZERO
+            cnt = flag + 1;
+        }
+        sum += val * cnt;
+    }
+    
+    long double pref = BIAS_CORRECTION * REGISTER_CNT * REGISTER_CNT;
+    return pref * (1.0l / sum); 
 }
 
 static long double estimate_cnt(dstr *hll) {
@@ -148,7 +174,7 @@ static void densify(dstr **phll) {
 
         if (flag & (1u << 7)) { // VAL flag
             flag &= ~(1u << 7);  // remove the 1 that identifies the flag
-            uint8_t val = flag >> 2;
+            uint8_t val = (flag >> 2) + 1;
             cnt = (flag & 3) + 1;
             while (cnt--) {
                 set_reg(dhll, reg_no, val);
