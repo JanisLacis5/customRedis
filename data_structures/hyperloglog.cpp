@@ -219,37 +219,162 @@ static long double estimate_cnt_s(dstr *hll) {
 }
 
 static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
-    // Both inclusive
-    uint32_t lb = 0;
-    uint32_t ub = 0;
+    if (val-- > 32) { // decrement val because it will be set as val-1
+        densify(&hll);
+        return add_dense(hll, reg_no, val);
+    }
 
-    for (uint32_t flag_no = 0; flag_no < hll->size; flag_no++) {
-        uint8_t flag = hll->buf[flag_no];
-        uint32_t cnt = 0;
-        uint32_t value = 0;
+    uint8_t start = 0;
+    uint8_t end = 0;
+    uint8_t *prev = NULL;
+    uint8_t *curr = NULL;
+    uint8_t *next = NULL;
+    uint32_t idx = 0;
+    uint8_t izero = 0;
+    uint8_t ival = 0;
+    uint8_t ixzero = 0;
+    uint8_t *hll_end = (uint8_t*)hll->buf + hll->size;
 
+    for (uint32_t fn = 0; fn < hll->size; fn++) {
+        uint8_t flag = hll->buf[fn];
+        start = idx;
         if (is_val(flag)) {
-            cnt = val_cnt(flag);
-            value = val_value(flag);
-            if (value > 32) { // VAL flag can only represent values 1...32
-                densify(&hll);
-                return add_dense(hll, reg_no, val);
-            }
+            ival = 1;
+            idx += val_cnt(flag);
         }
         else if (is_zero(flag)) {
-            cnt = zero_cnt(flag);
+            izero = 1;
+            idx += zero_cnt(flag);
         }
-        else { // XZERO
-            cnt = xzero_cnt(flag, hll->buf[++flag_no]);
+        else {
+            ixzero = 1;
+            idx += xzero_cnt(flag, hll->buf[++fn]);
+        }
+
+        if (idx > reg_no) {
+            end = idx - 1;
+            curr = &flag;
+            if (fn + 1 < hll->size) {
+                next = (uint8_t*)&hll->buf[fn + 1];
+            }
+            break;
+        }
+        prev = (uint8_t*)&hll->buf[fn];
+        ival = 0; izero = 0; ixzero = 0;
+    }
+
+    // Nothing changes - register at reg_no has a larger or equal value to val
+    if (ival && val_value(*curr) >= val) {
+        return 0;
+    }
+    
+    // Current register is a VAL with count 1 and value < val
+    if (ival && val_cnt(*curr) == 1) {
+        *curr &= ~(31 << 2); // clear the previous value
+        *curr |= val << 2; // add the new value
+        invalidate_cache(hll);
+        return 1;
+    }
+
+    // Replace the ZERO flag with count 1 with VAL flag with count 1
+    if (izero && zero_cnt(*curr) == 1) {
+        *curr = (1u << 7) | (val << 2) | 1;  
+    }
+
+    /* General case
+        It is guaranteed that currently *curr is VAL with count > 1,
+        ZERO with count > 1 or XZERO
+        
+        1) Split the flag that is holding the current reg_no
+        2) Set the 1st half in the tmp array
+        3) Set the new val in the tmp array
+        4) Set the other half in the tmp array
+
+        tmp array's max size is 5 because the worst case is
+        XZERO - VAL - XZERO flag configuration
+    */
+    uint8_t tmp[5];
+    uint8_t *tp = tmp;
+    if (ival) {
+        uint8_t pval = val_value(*curr);
+
+        // Split the PVAL (previous VAL)
+        if (start != reg_no) {
+            uint8_t count = reg_no - start;
+            *tp++ |= (1u << 7) | (pval << 2) | pval;
+        }
+
+        // Set VAL
+        *tp++ |= (1u << 7) | (val << 2) | 1;
+        
+        // Set the other half of PVAL
+        if (end != reg_no) {
+            uint8_t count = end - reg_no;
+            *tp++ |= (1u << 7) | (pval << 2) | count;    
+        }
+    }
+    else {
+        // Split the ZERO or XZERO
+        if (reg_no != start) {
+            uint32_t count = reg_no - start;
+            if (count > 64) { // set XZERO
+                *tp++ |= (1u << 6) | (val >> 8);
+                *tp++ |= val & 255;
+            }
+            else { // set ZERO
+                *tp++ |= val;
+            }
         }
         
-        ub = lb + cnt - 1;
-        
-        if (lb <= reg_no && reg_no <= ub) {
-            // TODO: implement the main logic here
+        // Set val
+        *tp++ = (1u << 7) | (val << 2) | 1;
+
+        // Add the other half of the split
+        if (reg_no != end) {
+            uint32_t count = end - reg_no;
+            if (count > 64) { // set XZERO
+                *tp++ |= (1u << 6) | (val >> 8);
+                *tp++ |= val & 255;
+            }
+            else { // set ZERO
+                *tp++ |= val;
+            }
+        }
+    }
+
+    // Merge changes into hll
+    uint8_t tmp_len = tp - tmp;
+    uint8_t old_len = ixzero ? 2 : 1;
+    uint8_t delta = tmp_len - old_len;
+
+    if (delta) {
+        dstr_resize(&hll, delta, 0);
+    }
+    if (delta && next) {
+        memmove(next + delta, next, hll_end - next);
+    }
+    memcpy(prev + 1, tmp, tmp_len);
+    hll_end += delta;
+    
+    // Merge adjacent VAL flags (try 5 starting from prev)
+    uint8_t *p = prev ? prev : (uint8_t*)hll->buf + HLL_HEADER_SIZE_BYTES;
+    uint8_t scanlen = 5;
+
+    while (p < hll_end && scanlen--) {
+        if (is_zero(*p)) {
+            p++;
+            continue;
+        }
+        if (!is_val(*p)) { // XZERO
+            p += 2;
+            continue;
+        }
+
+        if (p + 1 < hll_end && is_val(*(p + 1))) {
+            uint8_t *v1 = p;
+            uint8_t *v2 = p+1;
 
         }
-        lb = ub + 1;
     }
 }
 
