@@ -11,6 +11,7 @@
 #define BIAS_CORRECTION (0.7213 / (1. + 1.079 / REGISTER_CNT))
 #define HLL_HEADER_SIZE_BYTES 16
 #define HLL_DENSE_SIZE_BYTES (6 * REGISTER_CNT / 8) // 2^14 (16384) 6 bit register
+#define HLL_SPARSE_MAX_BYTES 3000
 
 enum HLLEncoding {
     HLL_DENSE = 0,

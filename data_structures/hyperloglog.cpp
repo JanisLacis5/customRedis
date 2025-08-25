@@ -5,6 +5,14 @@
 #include "hyperloglog.h"
 #include "utils/common.h"
 
+static uint8_t get_enc(dstr *hll) {
+    return hll->buf[4];
+}
+
+static void set_enc(dstr *hll, uint8_t enc) {
+    hll->buf[4] = enc;
+}
+
 static inline uint8_t get_reg(dstr *hll, uint32_t reg_no) {
     // Get the position of the byte where the first bit of the register is located
     uint32_t b0 = 6 * reg_no / 8 + HLL_HEADER_SIZE_BYTES;
@@ -27,11 +35,11 @@ static inline void set_reg(dstr *hll, uint32_t reg_no, uint32_t value) {
     uint32_t buf0 = hll->buf[b0];
     uint32_t buf1 = hll->buf[b0 + 1];
 
-    buf0 &= ~(0x3F << fb);
+    buf0 &= ~(63 << fb);
     buf0 |= value << fb;
     hll->buf[b0] = buf0 & UINT8_MAX; // clamp the output to 8 bit int
 
-    buf1 &= ~(0x3F >> (8 - fb));
+    buf1 &= ~(63 >> (8 - fb));
     buf1 |= value >> (8 - fb);
     hll->buf[b0 + 1] = buf1 & UINT8_MAX;
 }
@@ -83,7 +91,7 @@ static uint32_t cnt_zero_regs(dstr *hll) {
     return zero_reg_cnt;
 }
 
-static long double estimate_cnt(dstr *hll) {
+static long double estimate_cnt_d(dstr *hll) {  // for dense
     long double sum = 0.0l;
     for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
         uint8_t curr_reg = get_reg(hll, reg_no);
@@ -94,7 +102,18 @@ static long double estimate_cnt(dstr *hll) {
     return pref * (1.0l / sum);
 }
 
-void hll_init(dstr **hll_p) { // assumes hll not initialized (hll == NULL)
+static long double estimate_cnt_s(dstr *hll) {
+
+}
+
+static long double estimate_cnt(dstr *hll) {
+    if (get_enc(hll) == HLL_DENSE) {
+        return estimate_cnt_d(hll);
+    }
+    return estimate_cnt_s(hll);
+}
+
+static void dense_init(dstr **target) {
     dstr *hll = dstr_init(HLL_HEADER_SIZE_BYTES + HLL_DENSE_SIZE_BYTES);
     
     // This is not a typical string so the size is set and there are no free characters
@@ -112,6 +131,38 @@ void hll_init(dstr **hll_p) { // assumes hll not initialized (hll == NULL)
     }
     hll->buf[15] |= (1u << 7); // set the msb so the cached cardinality is invalid
     
+    *target = hll;
+}
+
+static void densify(dstr *hll) {
+    if (get_enc(hll) == HLL_DENSE) {
+        return;
+    }
+    set_enc(hll, HLL_DENSE);
+    
+    dstr *dhll = NULL;
+    dense_init(&dhll);
+}
+
+void hll_init(dstr **hll_p) { // assumes hll not initialized (hll == NULL)
+    dstr *hll = dstr_init(HLL_HEADER_SIZE_BYTES + 2); // 2 bytes for XZERO flag
+    memset(hll->buf, 0, HLL_HEADER_SIZE_BYTES + 2); 
+
+    // Create the header
+    memcpy(hll->buf, "HYLL", 4);
+    hll->buf[4] = HLL_SPARSE;
+    hll->buf[15] |= (1u << 7); // set the msb so the cached cardinality is invalid
+    
+    // Set all registers to zero (XZERO FLAG)
+    uint32_t runlen = REGISTER_CNT - 1;
+    hll->buf[16] = 0b01000000 | (runlen >> 8); // 01 + upper 6 bits
+    hll->buf[17] = runlen & 255; // lower 8 bits
+
+    // This is not a typical string so the size is set and there are no free characters
+    hll->size = HLL_HEADER_SIZE_BYTES + 2;
+    hll->free = 0;
+    hll->buf[hll->size] = '\0'; 
+
     *hll_p = hll;
 }
 
