@@ -221,11 +221,11 @@ static long double estimate_cnt_s(dstr *hll) {
 static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
     if (val-- > 32) { // decrement val because it will be set as val-1
         densify(&hll);
-        return add_dense(hll, reg_no, val);
+        return add_dense(hll, reg_no, val + 1); // add back the decrement
     }
 
-    uint8_t start = 0;
-    uint8_t end = 0;
+    uint32_t start = 0;
+    uint32_t end = 0;
     uint8_t *prev = NULL;
     uint8_t *curr = NULL;
     uint8_t *next = NULL;
@@ -237,6 +237,7 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
 
     for (uint32_t fn = 0; fn < hll->size; fn++) {
         uint8_t flag = hll->buf[fn];
+        curr = (uint8_t*)&hll->buf[fn];
         start = idx;
         if (is_val(flag)) {
             ival = 1;
@@ -253,7 +254,6 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
 
         if (idx > reg_no) {
             end = idx - 1;
-            curr = &flag;
             if (fn + 1 < hll->size) {
                 next = (uint8_t*)&hll->buf[fn + 1];
             }
@@ -278,7 +278,9 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
 
     // Replace the ZERO flag with count 1 with VAL flag with count 1
     if (izero && zero_cnt(*curr) == 1) {
-        *curr = (1u << 7) | (val << 2) | 1;  
+        *curr = (1u << 7) | (val << 2) | 1;
+        invalidate_cache(hll);
+        return 1;
     }
 
     /* General case
@@ -293,15 +295,15 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
         tmp array's max size is 5 because the worst case is
         XZERO - VAL - XZERO flag configuration
     */
-    uint8_t tmp[5];
+    uint8_t tmp[5] = {0, 0, 0, 0, 0};
     uint8_t *tp = tmp;
     if (ival) {
         uint8_t pval = val_value(*curr);
 
         // Split the PVAL (previous VAL)
         if (start != reg_no) {
-            uint8_t count = reg_no - start;
-            *tp++ |= (1u << 7) | (pval << 2) | pval;
+            uint8_t count = reg_no - start - 1;
+            *tp++ |= (1u << 7) | (pval << 2) | count;
         }
 
         // Set VAL
@@ -309,7 +311,7 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
         
         // Set the other half of PVAL
         if (end != reg_no) {
-            uint8_t count = end - reg_no;
+            uint8_t count = end - reg_no - 1;
             *tp++ |= (1u << 7) | (pval << 2) | count;    
         }
     }
@@ -318,11 +320,12 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
         if (reg_no != start) {
             uint32_t count = reg_no - start;
             if (count > 64) { // set XZERO
-                *tp++ |= (1u << 6) | (val >> 8);
-                *tp++ |= val & 255;
+                count--;
+                *tp++ |= (1u << 6) | (count >> 8);
+                *tp++ |= count & 255;
             }
             else { // set ZERO
-                *tp++ |= val;
+                *tp++ |= count - 1;
             }
         }
         
@@ -333,11 +336,12 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
         if (reg_no != end) {
             uint32_t count = end - reg_no;
             if (count > 64) { // set XZERO
-                *tp++ |= (1u << 6) | (val >> 8);
-                *tp++ |= val & 255;
+                count--;
+                *tp++ |= (1u << 6) | (count >> 8);
+                *tp++ |= count & 255;
             }
             else { // set ZERO
-                *tp++ |= val;
+                *tp++ |= count - 1;
             }
         }
     }
@@ -348,12 +352,12 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
     uint8_t delta = tmp_len - old_len;
 
     if (delta) {
-        dstr_resize(&hll, delta, 0);
+        dstr_resize(&hll, hll->size + delta, 0);
     }
     if (delta && next) {
         memmove(next + delta, next, hll_end - next);
     }
-    memcpy(prev + 1, tmp, tmp_len);
+    memcpy(curr, tmp, tmp_len);
     hll_end += delta;
     
     // Merge adjacent VAL flags (try 5 starting from prev)
@@ -377,8 +381,11 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
             if (v1 == v2) {
                 uint8_t len = val_cnt(*p) + val_cnt(*(p + 1));
                 if (len <= 4) {
+                    p++;
                     *p &= 0;
                     *p = (1u << 7) | (v1 << 2) | len;
+                    p--;
+
                     memmove(p, p+1, hll_end - p);
                     hll->buf[--hll->size] = '\0';
                     hll->free++;
