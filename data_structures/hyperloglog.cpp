@@ -226,8 +226,9 @@ uint64_t hll_count(dstr *hll) {
     }
 
     long double estimate = estimate_cnt(hll);
-
-    if (estimate <= 2.5l * REGISTER_CNT) {  // small range correction
+    
+    // small range correction for dense hll
+    if (get_enc(hll) == HLL_DENSE && estimate <= 2.5l * REGISTER_CNT) {
         uint32_t zero_regs = cnt_zero_regs(hll);
         if (zero_regs) {
             estimate = logl((long double)REGISTER_CNT / zero_regs) * REGISTER_CNT;
@@ -239,11 +240,59 @@ uint64_t hll_count(dstr *hll) {
     return estimate;
 }
 
+uint8_t add_dense(dstr *hll, uint32_t reg_no, uint8_t val) {
+    uint8_t reg = get_reg(hll, reg_no);
+    if (reg < val) {
+        set_reg(hll, reg_no, val);
+        invalidate_cache(hll); // cached value is not valid because hll has changed 
+        return 1;
+    }
+
+    validate_cache(hll); // cached value is valid because hll did not change
+    return 0; 
+}
+
+uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
+    // Both inclusive
+    uint32_t lb = 0;
+    uint32_t ub = 0;
+
+    for (uint32_t flag_no = 0; flag_no < hll->size; flag_no++) {
+        uint8_t flag = hll->buf[flag_no];
+        uint32_t cnt = 0;
+        uint32_t value = 0;
+
+        if (flag & (1u << 7)) { // VAL
+            flag &= ~(1u << 7);
+            cnt = (flag & 3) + 1;
+            value = (flag >> 2) + 1;
+        }
+        else if (flag & (1u << 6)) { // XZERO
+            flag &= ~(1u << 6);
+            cnt = flag << 8;
+            flag = hll->buf[++flag_no];
+            cnt |= flag;
+            cnt++;
+        }
+        else { // ZERO
+            cnt = flag;
+        }
+        
+        ub = lb + cnt - 1;
+        
+        if (lb <= reg_no && reg_no <= ub) {
+            // TODO: implement the main logic here
+        }
+        lb = ub + 1;
+    }
+}
+
 uint8_t hll_add(dstr *hll, dstr *val) {
     uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
     uint32_t reg_no = hash >> HLL_Q;
     uint64_t experimental = hash << HLL_P;
-    
+    uint8_t enc = get_enc(hll);
+
     // Count leading zeroes + 1
     uint8_t zeroes = 1;
     for (; zeroes <= HLL_Q; zeroes++) {
@@ -253,15 +302,12 @@ uint8_t hll_add(dstr *hll, dstr *val) {
         experimental <<= 1;
     }
 
-    uint8_t reg = get_reg(hll, reg_no);
-    if (reg < zeroes) {
-        set_reg(hll, reg_no, zeroes);
-        invalidate_cache(hll); // cached value is not valid because hll has changed 
-        return 1;
+    uint8_t ret = enc == HLL_DENSE ? add_dense(hll, reg_no, zeroes) : add_sparse(hll, reg_no, zeroes);
+
+    if (enc == HLL_SPARSE && hll->size > HLL_SPARSE_MAX_BYTES) {
+        densify(&hll);
     }
-        
-    validate_cache(hll); // cached value is valid because hll did not change
-    return 0;
+    return ret;
 }
 
 void hll_merge(dstr *dest, dstr *src) {
