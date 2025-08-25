@@ -116,32 +116,59 @@ static long double estimate_cnt(dstr *hll) {
 static void dense_init(dstr **target) {
     dstr *hll = dstr_init(HLL_HEADER_SIZE_BYTES + HLL_DENSE_SIZE_BYTES);
     
-    // This is not a typical string so the size is set and there are no free characters
-    hll->size = hll->free;
-    hll->free = 0;
-
     // Zero-out all registers
-    memset(hll->buf + HLL_HEADER_SIZE_BYTES, 0, HLL_DENSE_SIZE_BYTES);
+    memset(hll->buf, 0, HLL_HEADER_SIZE_BYTES + HLL_DENSE_SIZE_BYTES);
 
     // Create the header
-    dstr_append(&hll, "HYLL", 4); 
+    memcpy(hll->buf, "HYLL", 4);
     hll->buf[4] = HLL_DENSE;
-    for (uint32_t i = 8; i < 16; i++) {
-        hll->buf[i] = 0;
-    }
     hll->buf[15] |= (1u << 7); // set the msb so the cached cardinality is invalid
     
+    // This is not a typical string so the size is set and there are no free characters
+    hll->size = HLL_HEADER_SIZE_BYTES + HLL_DENSE_SIZE_BYTES;
+    hll->free = 0;
+    hll->buf[hll->size] = '\0';
+
     *target = hll;
 }
 
-static void densify(dstr *hll) {
+static void densify(dstr **phll) {
+    dstr *hll = *phll;
     if (get_enc(hll) == HLL_DENSE) {
         return;
     }
-    set_enc(hll, HLL_DENSE);
     
     dstr *dhll = NULL;
     dense_init(&dhll);
+    
+    uint32_t reg_no = 0;
+    for (uint32_t flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
+        uint32_t flag = hll->buf[flag_no];
+        uint32_t cnt = 0;
+
+        if (flag & (1u << 7)) { // VAL flag
+            flag &= ~(1u << 7);  // remove the 1 that identifies the flag
+            uint8_t val = flag >> 2;
+            cnt = (flag & 3) + 1;
+            while (cnt--) {
+                set_reg(dhll, reg_no, val);
+                reg_no++;
+            }
+        }
+        else if (flag & (1u << 6)) { // XZERO flag
+            flag &= ~(1u << 6); // remove the 01 that identifies the flag
+            cnt = flag << 8;
+            flag = hll->buf[++flag_no];
+            cnt |= flag;
+            cnt++;
+        }
+        else { // ZERO flag
+            cnt = flag + 1;
+        }
+        reg_no += cnt;
+    }
+    free(*phll);
+    *phll = dhll;
 }
 
 void hll_init(dstr **hll_p) { // assumes hll not initialized (hll == NULL)
