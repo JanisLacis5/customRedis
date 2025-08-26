@@ -826,7 +826,7 @@ void do_pfcount(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!validate_hmnode(conn, hm_node, T_HLL)) {
-        return out_err(conn, "bad hm_node");
+        return;
     }
 
     uint64_t count = hll_count(hm_node->hll);

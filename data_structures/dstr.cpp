@@ -69,6 +69,23 @@ uint32_t dstr_resize(dstr **pstr, size_t len, unsigned char pad) {
     return STR_OK;
 }
 
+uint32_t dstr_reserve(dstr **pstr, size_t add) {
+    if ((*pstr)->size + add > MAX_STR_SIZE) {
+        return STR_ERR_TOO_LARGE;
+    }
+    dstr *str = *pstr;
+
+    if (str->free >= add) {
+        return STR_OK;
+    }
+    
+    str = (dstr*)realloc(str, str->size + add + 1);
+
+    str->free = add;
+    *pstr = str;
+    return STR_OK;
+}
+
 uint32_t dstr_append(dstr **pstr, const char *toadd, size_t toadd_s) {
     if (toadd_s + dstr_cap(*pstr) > MAX_STR_SIZE) {
         return STR_ERR_TOO_LARGE;

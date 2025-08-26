@@ -1,8 +1,10 @@
 #include <cstdint>
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include <assert.h>
 #include "hyperloglog.h"
+#include "dstr.h"
 #include "utils/common.h"
 
 // === GENERAL HELPER FUNCTIONS ===
@@ -105,14 +107,17 @@ static inline void set_reg(dstr *hll, uint32_t reg_no, uint32_t value) {
     hll->buf[b0 + 1] = buf1 & UINT8_MAX;
 }
 
-static uint8_t add_dense(dstr *hll, uint32_t reg_no, uint8_t val) {
+static uint8_t add_dense(dstr **phll, uint32_t reg_no, uint8_t val) {
+    dstr *hll = *phll;
     uint8_t reg = get_reg(hll, reg_no);
     if (reg < val) {
         set_reg(hll, reg_no, val);
         invalidate_cache(hll); // cached value is not valid because hll has changed 
+        *phll = hll;
         return 1;
     }
-
+    
+    *phll = hll;
     return 0; 
 }
 
@@ -218,11 +223,25 @@ static long double estimate_cnt_s(dstr *hll) {
     return pref * (1.0l / sum); 
 }
 
-static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
-    if (val-- > 32) { // decrement val because it will be set as val-1
-        densify(&hll);
-        return add_dense(hll, reg_no, val + 1); // add back the decrement
+static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
+    dstr *hll = *phll;
+    if (val-- > 32 || hll->size + 5 > HLL_SPARSE_MAX_BYTES) { // decrement val because it will be set as val-1
+        densify(phll);
+        return add_dense(phll, reg_no, val + 1); // add back the decrement
     }
+    
+    // Reserve extra bytes in memory for memmove
+    uint32_t new_cap = hll->size + 3;
+    new_cap += dmin(new_cap, 300);
+    printf("%ld\n", hll->size + hll->free);
+    if (new_cap > HLL_SPARSE_MAX_BYTES) {
+        dstr_reserve(&hll, HLL_SPARSE_MAX_BYTES - hll->size);
+    }
+    else {
+        dstr_reserve(&hll, new_cap - hll->size);
+    }
+    *phll = hll;
+    printf("%ld\n", hll->size + hll->free);
 
     uint32_t start = 0;
     uint32_t end = 0;
@@ -351,11 +370,10 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
     uint8_t old_len = ixzero ? 2 : 1;
     uint8_t delta = tmp_len - old_len;
 
-    if (delta) {
-        dstr_resize(&hll, hll->size + delta, 0);
-    }
     if (delta && next) {
         memmove(next + delta, next, hll_end - next);
+        hll->free += delta;
+        hll->size -= delta;
     }
     memcpy(curr, tmp, tmp_len);
     hll_end += delta;
@@ -395,6 +413,7 @@ static uint8_t add_sparse(dstr *hll, uint32_t reg_no, uint8_t val) {
         }
         p++;
     }
+    *phll = hll;
     invalidate_cache(hll);
     return 1;
 }
@@ -456,7 +475,6 @@ uint8_t hll_add(dstr *hll, dstr *val) {
     uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
     uint32_t reg_no = hash >> HLL_Q;
     uint64_t experimental = hash << HLL_P;
-    uint8_t enc = get_enc(hll);
 
     // Count leading zeroes + 1
     uint8_t zeroes = 1;
@@ -467,9 +485,9 @@ uint8_t hll_add(dstr *hll, dstr *val) {
         experimental <<= 1;
     }
 
-    uint8_t ret = enc == HLL_DENSE ? add_dense(hll, reg_no, zeroes) : add_sparse(hll, reg_no, zeroes);
+    uint8_t ret = get_enc(hll) == HLL_DENSE ? add_dense(&hll, reg_no, zeroes) : add_sparse(&hll, reg_no, zeroes);
 
-    if (enc == HLL_SPARSE && hll->size > HLL_SPARSE_MAX_BYTES) {
+    if (get_enc(hll) == HLL_SPARSE && hll->size > HLL_SPARSE_MAX_BYTES) {
         densify(&hll);
     }
     return ret;
