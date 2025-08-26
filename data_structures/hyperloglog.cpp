@@ -125,10 +125,24 @@ static uint8_t add_dense(dstr **phll, uint32_t reg_no, uint8_t val) {
 
 static uint32_t cnt_zero_regs(dstr *hll) {
     uint32_t zero_reg_cnt = 0;
-    for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
-        uint8_t reg = get_reg(hll, reg_no);
-        if (!reg) {
-            zero_reg_cnt++;
+
+    if (get_enc(hll) == HLL_DENSE) {
+        for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
+            uint8_t reg = get_reg(hll, reg_no);
+            if (!reg) {
+                zero_reg_cnt++;
+            }
+        }
+    }
+    else {
+        for (uint32_t fn = HLL_HEADER_SIZE_BYTES; fn < hll->size; fn++) {
+            uint8_t flag = hll->buf[fn];
+            if (iszero(flag)) {
+                zero_reg_cnt += zero_cnt(flag);
+            }
+            else if (!is_val(flag)) {
+                zero_reg_cnt += xzero_cnt(flag, hll->buf[++fn]);
+            }
         }
     }
 
@@ -220,7 +234,7 @@ static long double estimate_cnt_s(dstr *hll) {
         }
         sum += val * cnt;
     }
-    
+    printf("sum = %Lf\n", sum); 
     long double pref = BIAS_CORRECTION * REGISTER_CNT * REGISTER_CNT;
     return pref * (1.0l / sum); 
 }
@@ -272,7 +286,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         }
 
         if (idx > reg_no) {
-            end = idx;
+            end = idx - 1;
             if (fn + 1 < hll->size) {
                 next = (uint8_t*)&hll->buf[fn + 1];
             }
@@ -457,10 +471,11 @@ uint64_t hll_count(dstr *hll) {
     }
 
     long double estimate = estimate_cnt(hll);
-    printf("cnt = %Lf\n", estimate); 
-    // small range correction for dense hll
-    if (get_enc(hll) == HLL_DENSE && estimate <= 2.5l * REGISTER_CNT) {
+
+    // small range correction
+    if (estimate <= 2.5l * REGISTER_CNT) {
         uint32_t zero_regs = cnt_zero_regs(hll);
+        printf("zero regs = %d\n", zero_regs);
         if (zero_regs) {
             estimate = logl((long double)REGISTER_CNT / zero_regs) * REGISTER_CNT;
         }
