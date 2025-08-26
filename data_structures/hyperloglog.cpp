@@ -1,3 +1,5 @@
+#include <cinttypes>
+#include <cmath>
 #include <cstdint>
 #include <stdio.h>
 #include <math.h>
@@ -233,7 +235,6 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
     // Reserve extra bytes in memory for memmove
     uint32_t new_cap = hll->size + 3;
     new_cap += dmin(new_cap, 300);
-    printf("%ld\n", hll->size + hll->free);
     if (new_cap > HLL_SPARSE_MAX_BYTES) {
         dstr_reserve(&hll, HLL_SPARSE_MAX_BYTES - hll->size);
     }
@@ -253,7 +254,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
     uint8_t ixzero = 0;
     uint8_t *hll_end = (uint8_t*)hll->buf + hll->size;
 
-    for (uint32_t fn = 0; fn < hll->size; fn++) {
+    for (uint32_t fn = HLL_HEADER_SIZE_BYTES; fn < hll->size; fn++) {
         uint8_t flag = hll->buf[fn];
         curr = (uint8_t*)&hll->buf[fn];
         start = idx;
@@ -271,7 +272,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         }
 
         if (idx > reg_no) {
-            end = idx - 1;
+            end = idx;
             if (fn + 1 < hll->size) {
                 next = (uint8_t*)&hll->buf[fn + 1];
             }
@@ -280,7 +281,8 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         prev = (uint8_t*)&hll->buf[fn];
         ival = 0; izero = 0; ixzero = 0;
     }
-
+    printf("xzero = %d, zero = %d, val = %d\n", ixzero, izero, ival);
+    printf("start = %d, end = %d\n", start, end);
     // Nothing changes - register at reg_no has a larger or equal value to val
     if (ival && val_value(*curr) >= val) {
         return 0;
@@ -325,7 +327,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         }
 
         // Set VAL
-        *tp++ |= (1u << 7) | (val << 2) | 1;
+        *tp++ |= (1u << 7) | (val << 2);
         
         // Set the other half of PVAL
         if (end != reg_no) {
@@ -336,30 +338,30 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
     else {
         // Split the ZERO or XZERO
         if (reg_no != start) {
-            uint32_t count = reg_no - start;
+            uint32_t count = reg_no - start - 1;
+            printf("cnt1 = %d\n", count);
             if (count > 64) { // set XZERO
-                count--;
                 *tp++ |= (1u << 6) | (count >> 8);
                 *tp++ |= count & 255;
             }
             else { // set ZERO
-                *tp++ |= count - 1;
+                *tp++ |= count;
             }
         }
         
         // Set val
-        *tp++ = (1u << 7) | (val << 2) | 1;
+        *tp++ = (1u << 7) | (val << 2);
 
         // Add the other half of the split
         if (reg_no != end) {
-            uint32_t count = end - reg_no;
+            uint32_t count = end - reg_no - 1;
+            printf("count2 = %d\n", count);
             if (count > 64) { // set XZERO
-                count--;
                 *tp++ |= (1u << 6) | (count >> 8);
                 *tp++ |= count & 255;
             }
             else { // set ZERO
-                *tp++ |= count - 1;
+                *tp++ |= count;
             }
         }
     }
@@ -367,12 +369,12 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
     // Merge changes into hll
     uint8_t tmp_len = tp - tmp;
     uint8_t old_len = ixzero ? 2 : 1;
-    uint8_t delta = tmp_len - old_len;
+    int8_t delta = tmp_len - old_len;
+    hll->size += delta;
+    hll->free -= delta;
 
     if (delta && next) {
         memmove(next + delta, next, hll_end - next);
-        hll->free += delta;
-        hll->size -= delta;
     }
     memcpy(curr, tmp, tmp_len);
     hll_end += delta;
@@ -414,7 +416,6 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
     }
     invalidate_cache(hll);
     *phll = hll;
-    printf("%p\n", hll);
     return 1;
 }
 
@@ -450,14 +451,13 @@ static long double estimate_cnt(dstr *hll) {
 }
 
 uint64_t hll_count(dstr *hll) {
-    printf("%p\n", hll);
     // If cache is valid, return cache
     if (cache_valid(hll)) {
         return get_cache(hll);
     }
 
     long double estimate = estimate_cnt(hll);
-    
+    printf("cnt = %Lf\n", estimate); 
     // small range correction for dense hll
     if (get_enc(hll) == HLL_DENSE && estimate <= 2.5l * REGISTER_CNT) {
         uint32_t zero_regs = cnt_zero_regs(hll);
@@ -471,13 +471,39 @@ uint64_t hll_count(dstr *hll) {
     return estimate;
 }
 
+#include <inttypes.h>
+static inline void print_bin_u64(uint64_t x) {
+    for (int i = 63; i >= 0; --i) {
+        putchar( (x >> i) & 1 ? '1' : '0' );
+        if (i % 8 == 0 && i != 0) putchar(' '); // optional grouping
+    }
+}
 
+static inline void print_label_bin64(const char* label, uint64_t x) {
+    fputs(label, stdout);
+    print_bin_u64(x);
+    putchar('\n');
+}
 uint8_t hll_add(dstr **phll, dstr *val) {
     dstr *hll = *phll;
     uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
     uint32_t reg_no = hash >> HLL_Q;
     uint64_t experimental = hash << HLL_P;
+    printf("hash "); print_bin_u64(hash); printf("\n");
+    printf("exhash "); print_bin_u64(experimental); printf("\n");
 
+    for (int i = HLL_HEADER_SIZE_BYTES; i < hll->size; i++) {
+        uint8_t flag = hll->buf[i];
+        if (is_val(flag)) {
+            printf("flag VAL, val = %d, cnt = %d\n", val_value(flag), val_cnt(flag));
+        }
+        else if (iszero(flag)) {
+            printf("flag ZERO, cnt = %d\n", zero_cnt(flag));
+        }
+        else {
+            printf("flag XZERO, cnt = %d\n", xzero_cnt(flag, hll->buf[++i]));
+        }
+    }
     // Count leading zeroes + 1
     uint8_t zeroes = 1;
     for (; zeroes <= HLL_Q; zeroes++) {
@@ -487,8 +513,22 @@ uint8_t hll_add(dstr **phll, dstr *val) {
         experimental <<= 1;
     }
 
+    printf("adding zero_cnt %d to reg %d\n", zeroes, reg_no);
     uint8_t ret = get_enc(hll) == HLL_DENSE ? add_dense(phll, reg_no, zeroes) : add_sparse(phll, reg_no, zeroes);
     hll = *phll;
+    
+    for (int i = HLL_HEADER_SIZE_BYTES; i < hll->size; i++) {
+        uint8_t flag = hll->buf[i];
+        if (is_val(flag)) {
+            printf("flag VAL, val = %d, cnt = %d\n", val_value(flag), val_cnt(flag));
+        }
+        else if (iszero(flag)) {
+            printf("flag ZERO, cnt = %d\n", zero_cnt(flag));
+        }
+        else {
+            printf("flag XZERO, cnt = %d\n", xzero_cnt(flag, hll->buf[++i]));
+        }
+    }
 
     if (get_enc(hll) == HLL_SPARSE && hll->size > HLL_SPARSE_MAX_BYTES) {
         densify(phll);
