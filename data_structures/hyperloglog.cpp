@@ -241,7 +241,6 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         dstr_reserve(&hll, new_cap - hll->size);
     }
     *phll = hll;
-    printf("%ld\n", hll->size + hll->free);
 
     uint32_t start = 0;
     uint32_t end = 0;
@@ -413,8 +412,9 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         }
         p++;
     }
-    *phll = hll;
     invalidate_cache(hll);
+    *phll = hll;
+    printf("%p\n", hll);
     return 1;
 }
 
@@ -450,6 +450,7 @@ static long double estimate_cnt(dstr *hll) {
 }
 
 uint64_t hll_count(dstr *hll) {
+    printf("%p\n", hll);
     // If cache is valid, return cache
     if (cache_valid(hll)) {
         return get_cache(hll);
@@ -471,7 +472,8 @@ uint64_t hll_count(dstr *hll) {
 }
 
 
-uint8_t hll_add(dstr *hll, dstr *val) {
+uint8_t hll_add(dstr **phll, dstr *val) {
+    dstr *hll = *phll;
     uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
     uint32_t reg_no = hash >> HLL_Q;
     uint64_t experimental = hash << HLL_P;
@@ -485,10 +487,11 @@ uint8_t hll_add(dstr *hll, dstr *val) {
         experimental <<= 1;
     }
 
-    uint8_t ret = get_enc(hll) == HLL_DENSE ? add_dense(&hll, reg_no, zeroes) : add_sparse(&hll, reg_no, zeroes);
+    uint8_t ret = get_enc(hll) == HLL_DENSE ? add_dense(phll, reg_no, zeroes) : add_sparse(phll, reg_no, zeroes);
+    hll = *phll;
 
     if (get_enc(hll) == HLL_SPARSE && hll->size > HLL_SPARSE_MAX_BYTES) {
-        densify(&hll);
+        densify(phll);
     }
     return ret;
 }

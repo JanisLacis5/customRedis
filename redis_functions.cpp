@@ -806,12 +806,13 @@ void do_pfadd(Conn *conn, std::vector<dstr*> &cmd) {
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
         hm_node = new_node(key, T_HLL);
+        hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_HLL) {
         return out_err(conn, "wrong type");
     }
 
-    uint8_t is_added = hll_add(hm_node->hll, val);
+    uint8_t is_added = hll_add(&hm_node->hll, val);
     out_int(conn, is_added);
 }
 
