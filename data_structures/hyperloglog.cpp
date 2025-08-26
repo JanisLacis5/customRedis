@@ -1,4 +1,3 @@
-#include <cinttypes>
 #include <cmath>
 #include <cstdint>
 #include <stdio.h>
@@ -234,7 +233,7 @@ static long double estimate_cnt_s(dstr *hll) {
         }
         sum += val * cnt;
     }
-    printf("sum = %Lf\n", sum); 
+
     long double pref = BIAS_CORRECTION * REGISTER_CNT * REGISTER_CNT;
     return pref * (1.0l / sum); 
 }
@@ -295,8 +294,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         prev = (uint8_t*)&hll->buf[fn];
         ival = 0; izero = 0; ixzero = 0;
     }
-    printf("xzero = %d, zero = %d, val = %d\n", ixzero, izero, ival);
-    printf("start = %d, end = %d\n", start, end);
+
     // Nothing changes - register at reg_no has a larger or equal value to val
     if (ival && val_value(*curr) >= val) {
         return 0;
@@ -353,7 +351,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         // Split the ZERO or XZERO
         if (reg_no != start) {
             uint32_t count = reg_no - start - 1;
-            printf("cnt1 = %d\n", count);
+
             if (count > 64) { // set XZERO
                 *tp++ |= (1u << 6) | (count >> 8);
                 *tp++ |= count & 255;
@@ -369,7 +367,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
         // Add the other half of the split
         if (reg_no != end) {
             uint32_t count = end - reg_no - 1;
-            printf("count2 = %d\n", count);
+
             if (count > 64) { // set XZERO
                 *tp++ |= (1u << 6) | (count >> 8);
                 *tp++ |= count & 255;
@@ -475,7 +473,7 @@ uint64_t hll_count(dstr *hll) {
     // small range correction
     if (estimate <= 2.5l * REGISTER_CNT) {
         uint32_t zero_regs = cnt_zero_regs(hll);
-        printf("zero regs = %d\n", zero_regs);
+
         if (zero_regs) {
             estimate = logl((long double)REGISTER_CNT / zero_regs) * REGISTER_CNT;
         }
@@ -486,39 +484,12 @@ uint64_t hll_count(dstr *hll) {
     return estimate;
 }
 
-#include <inttypes.h>
-static inline void print_bin_u64(uint64_t x) {
-    for (int i = 63; i >= 0; --i) {
-        putchar( (x >> i) & 1 ? '1' : '0' );
-        if (i % 8 == 0 && i != 0) putchar(' '); // optional grouping
-    }
-}
-
-static inline void print_label_bin64(const char* label, uint64_t x) {
-    fputs(label, stdout);
-    print_bin_u64(x);
-    putchar('\n');
-}
 uint8_t hll_add(dstr **phll, dstr *val) {
     dstr *hll = *phll;
     uint64_t hash = str_hash((uint8_t*)val->buf, val->size);
     uint32_t reg_no = hash >> HLL_Q;
     uint64_t experimental = hash << HLL_P;
-    printf("hash "); print_bin_u64(hash); printf("\n");
-    printf("exhash "); print_bin_u64(experimental); printf("\n");
 
-    for (int i = HLL_HEADER_SIZE_BYTES; i < hll->size; i++) {
-        uint8_t flag = hll->buf[i];
-        if (is_val(flag)) {
-            printf("flag VAL, val = %d, cnt = %d\n", val_value(flag), val_cnt(flag));
-        }
-        else if (iszero(flag)) {
-            printf("flag ZERO, cnt = %d\n", zero_cnt(flag));
-        }
-        else {
-            printf("flag XZERO, cnt = %d\n", xzero_cnt(flag, hll->buf[++i]));
-        }
-    }
     // Count leading zeroes + 1
     uint8_t zeroes = 1;
     for (; zeroes <= HLL_Q; zeroes++) {
@@ -528,22 +499,8 @@ uint8_t hll_add(dstr **phll, dstr *val) {
         experimental <<= 1;
     }
 
-    printf("adding zero_cnt %d to reg %d\n", zeroes, reg_no);
     uint8_t ret = get_enc(hll) == HLL_DENSE ? add_dense(phll, reg_no, zeroes) : add_sparse(phll, reg_no, zeroes);
     hll = *phll;
-    
-    for (int i = HLL_HEADER_SIZE_BYTES; i < hll->size; i++) {
-        uint8_t flag = hll->buf[i];
-        if (is_val(flag)) {
-            printf("flag VAL, val = %d, cnt = %d\n", val_value(flag), val_cnt(flag));
-        }
-        else if (iszero(flag)) {
-            printf("flag ZERO, cnt = %d\n", zero_cnt(flag));
-        }
-        else {
-            printf("flag XZERO, cnt = %d\n", xzero_cnt(flag, hll->buf[++i]));
-        }
-    }
 
     if (get_enc(hll) == HLL_SPARSE && hll->size > HLL_SPARSE_MAX_BYTES) {
         densify(phll);
