@@ -815,6 +815,22 @@ void do_pfadd(Conn *conn, std::vector<dstr*> &cmd) {
     out_int(conn, is_added);
 }
 
-void do_pfcount(Conn *conn, std::vector<dstr*> &cmd) {}
+void do_pfcount(Conn *conn, std::vector<dstr*> &cmd) {
+    // ARGS
+    dstr *key = cmd[1];
+
+    HNode tmp;
+    tmp.key = dstr_init(key->size);
+    dstr_append(&tmp.key, key->buf, key->size);
+    tmp.hcode = str_hash((uint8_t*)key->buf, key->size);
+
+    HNode *hm_node = hm_lookup(&global_data.db, &tmp);
+    if (!validate_hmnode(conn, hm_node, T_HLL)) {
+        return out_err(conn, "bad hm_node");
+    }
+
+    uint64_t count = hll_count(hm_node->hll);
+    out_int(conn, count);
+}
 
 void do_pfmerge(Conn *conn, std::vector<dstr*> &cmd) {}
