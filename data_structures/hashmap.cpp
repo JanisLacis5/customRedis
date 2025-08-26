@@ -4,6 +4,8 @@
 #include "hashmap.h"
 #include "server.h"
 #include "zset.h"
+#include "hyperloglog.h"
+#include "utils/common.h"
 
 const size_t MAX_LOAD_FACTOR = 8;
 const size_t REHASHING_WORK = 128;
@@ -230,6 +232,9 @@ HNode* new_node(dstr *key, uint32_t type) {
     }
     if (type == T_BITMAP) {
         node->bitmap = dstr_init(0);
+    }
+    if (type == T_HLL) {
+        hll_init(&node->hll);
     }
     return node;
 }

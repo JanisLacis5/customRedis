@@ -6,7 +6,6 @@
 #include <vector>
 #include "dlist.h"
 #include "dstr.h"
-#include "utils/common.h"
 
 struct HNode;
 struct ZSet;

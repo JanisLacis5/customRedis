@@ -18,6 +18,7 @@ enum HLLEncoding {
     HLL_SPARSE = 1
 };
 
+void hll_init(dstr **phll);
 uint8_t hll_add(dstr *hll, dstr *val);
 uint64_t hll_count(dstr *hll);
 void hll_merge(dstr *hll1, dstr *hll2);
