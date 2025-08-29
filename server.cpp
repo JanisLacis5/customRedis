@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <ctype.h>
 #include <sys/socket.h>
 #include <stdio.h>
 #include <poll.h>
@@ -180,6 +181,10 @@ static size_t parse_cmd(uint8_t *buf, std::vector<dstr*> &cmd) {
 }
 
 static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
+    // Convert the command to lower case
+    char *p = cmd[0]->buf;
+    for ( ; *p; p++) *p = tolower(*p);
+
     // GLOBAL DATABASE
     if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "get")) {
         do_get(conn, cmd);
