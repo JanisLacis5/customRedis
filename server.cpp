@@ -285,6 +285,19 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
     else if (!strcmp(cmd[0]->buf, "pfmerge")) {
         do_pfmerge(conn, cmd);
     }
+    // TODO: IMPLEMENT
+    else if (!strcmp(cmd[0]->buf, "multi")) {
+        return;            
+    }
+    else if (!strcmp(cmd[0]->buf, "exec")) {
+        return;        
+    }
+    else if (!strcmp(cmd[0]->buf, "watch")) {
+        return;        
+    }
+    else if (!strcmp(cmd[0]->buf, "discard")) {
+        return;
+    }
     else {
         out_err(conn, "unknown command");
     }
