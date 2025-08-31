@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdio.h>
 #include <cstdint>
 #include <cstdlib>
 #include <string.h>
@@ -129,4 +130,7 @@ int run_all_dstr() {
         test_dstr_assign(size);
     }
     test_dstr_append();
+    
+    printf("dstr tests passed!\n");
+    return 0;
 }

@@ -159,6 +159,7 @@ int run_all_hll() {
     test_zero_cnt();
     test_xzero_cnt();
     test_set_cache_and_get_cache();
+    printf("hll tests passed!\n");
     return 0;
 }
 
