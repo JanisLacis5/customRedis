@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
-#include "data_structures/dstr.h"
+#include "../../data_structures/dstr.h"
 
 const size_t too_large_size = MAX_STR_SIZE + 1;
 
@@ -106,7 +106,7 @@ static void test_dstr_assign(size_t size) {
     free(str);
 }
 
-int main() {
+int run_all_dstr() {
     srand(time(NULL));
 
     // Test if the string overall works with different sizes

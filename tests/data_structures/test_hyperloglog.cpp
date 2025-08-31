@@ -150,7 +150,7 @@ void test_set_cache_and_get_cache() {
     free(hll);
 }
 
-int main(void) {
+int run_all_hll() {
     test_get_enc();
     test_set_enc();
     test_cache_valid_and_invalidate();
