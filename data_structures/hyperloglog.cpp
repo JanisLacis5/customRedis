@@ -58,9 +58,8 @@ static void set_cache(dstr *hll, uint64_t value) {
     
     // Because value fits in 63 bits, msb of the value will be a 0-bit therefore
     // cache flag will be unset which means that it is valid (expected)
-    for (uint8_t i = 8; i < 16; i++) {
-        // Clear the byte
-        hll->buf[i] = value & 0xFF;
+    for (int i = 8; i < 16; i++) {
+        hll->buf[i] = value & 255;
         value >>= 8;
     }
 }
@@ -69,8 +68,8 @@ static uint64_t get_cache(dstr *hll) {
     assert(cache_valid(hll)); // if cache is invalid, this function returns garbage
     
     uint64_t cache = 0;
-    for (uint8_t i = 0; i < 8; i++) {
-        cache |= (uint64_t)hll->buf[8 + i] << (8 * i);
+    for (int i = 0; i < 8; i++) {
+        cache |= (uint64_t)(uint8_t)hll->buf[8 + i] << (8 * i);
     }
     
     return cache;
@@ -126,7 +125,7 @@ static uint32_t cnt_zero_regs(dstr *hll) {
     uint32_t zero_reg_cnt = 0;
 
     if (get_enc(hll) == HLL_DENSE) {
-        for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
+        for (int reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
             uint8_t reg = get_reg(hll, reg_no);
             if (!reg) {
                 zero_reg_cnt++;
@@ -134,7 +133,7 @@ static uint32_t cnt_zero_regs(dstr *hll) {
         }
     }
     else {
-        for (uint32_t fn = HLL_HEADER_SIZE_BYTES; fn < hll->size; fn++) {
+        for (int fn = HLL_HEADER_SIZE_BYTES; fn < hll->size; fn++) {
             uint8_t flag = hll->buf[fn];
             if (iszero(flag)) {
                 zero_reg_cnt += zero_cnt(flag);
@@ -150,7 +149,7 @@ static uint32_t cnt_zero_regs(dstr *hll) {
 
 static long double estimate_cnt_d(dstr *hll) {
     long double sum = 0.0l;
-    for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
+    for (int reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
         uint8_t curr_reg = get_reg(hll, reg_no);
         sum += 1.0l / (1ull << curr_reg);
     }
@@ -188,7 +187,7 @@ static void densify(dstr **phll) {
     dense_init(&dhll);
     
     uint32_t reg_no = 0;
-    for (uint32_t flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
+    for (int flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
         uint32_t flag = hll->buf[flag_no];
         uint32_t cnt = 0;
 
@@ -215,7 +214,7 @@ static void densify(dstr **phll) {
 // === SPARSE HELPER FUNCTIONS ===
 static long double estimate_cnt_s(dstr *hll) {
     long double sum = 0.0l;
-    for (uint32_t flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
+    for (int flag_no = HLL_HEADER_SIZE_BYTES; flag_no < hll->size; flag_no++) {
         long double val = 1.0l;
         uint32_t flag = hll->buf[flag_no];
         uint32_t cnt = 0;
@@ -267,7 +266,7 @@ static uint8_t add_sparse(dstr **phll, uint32_t reg_no, uint8_t val) {
     uint8_t ixzero = 0;
     uint8_t *hll_end = (uint8_t*)hll->buf + hll->size;
 
-    for (uint32_t fn = HLL_HEADER_SIZE_BYTES; fn < hll->size; fn++) {
+    for (int fn = HLL_HEADER_SIZE_BYTES; fn < hll->size; fn++) {
         uint8_t flag = hll->buf[fn];
         curr = (uint8_t*)&hll->buf[fn];
         start = idx;
@@ -510,7 +509,7 @@ uint8_t hll_add(dstr **phll, dstr *val) {
 
 void hll_merge(dstr *dest, dstr *src) {
     bool changed = false;
-    for (uint32_t reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
+    for (int reg_no = 0; reg_no < REGISTER_CNT; reg_no++) {
         uint8_t reg1 = get_reg(dest, reg_no);
         uint8_t reg2 = get_reg(src, reg_no);
         if (reg1 < reg2) {

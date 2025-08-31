@@ -133,10 +133,10 @@ void test_set_cache_and_get_cache() {
         0ull,
         1ull,
         123456789ull,
-        (1ull<<40) + 12345ull,
-        (1ull<<63) - 1ull // max allowed by your assert
+        (1ull << 40) + 12345ull,
+        (1ull << 63) - 1ull // max allowed by your assert
     };
-    for (size_t i = 0; i < sizeof(vals)/sizeof(vals[0]); i++) {
+    for (size_t i = 0; i < 5; i++) {
         set_cache(hll, vals[i]);
         assert(cache_valid(hll));           // top bit of byte 15 must be 0
         uint64_t got = get_cache(hll);
