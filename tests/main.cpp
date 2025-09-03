@@ -9,4 +9,5 @@
 int main() {
     run_all_hll();
     run_all_dstr();
+    run_all_dlist();
 }
