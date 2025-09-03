@@ -105,14 +105,15 @@ void test_dlist_insert_after() {
 
 int run_all_dlist() {
     test_dlist_init();
-    printf("\t [dlist]: dlist_init() passed! (1/5)\n");
+    printf("[dlist]: dlist_init() passed! (1/5)\n");
     test_dlist_empty();
-    printf("\t [dlist]: dlist_empty() passed! (2/5)\n");
+    printf("[dlist]: dlist_empty() passed! (2/5)\n");
     test_dlist_deatach();
-    printf("\t [dlist]: dlist_deatach() passed! (3/5)\n");
+    printf("[dlist]: dlist_deatach() passed! (3/5)\n");
     test_dlist_insert_before();
-    printf("\t [dlist]: dlist_insert_before() passed! (4/5)\n");
+    printf("[dlist]: dlist_insert_before() passed! (4/5)\n");
     test_dlist_insert_after();
-    printf("\t [dlist]: dlist_insert_after() passed! (5/5)\n");
+    printf("[dlist]: dlist_insert_after() passed! (5/5)\n");
+    printf("[dlist]: ALL DLIST TESTS PASSED!\n\n");
     return 0;
 }

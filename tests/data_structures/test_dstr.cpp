@@ -124,13 +124,18 @@ int run_all_dstr() {
     size_t size_grid[] = {1, 100, (1 << 15), MAX_STR_SIZE};
     for (size_t size: size_grid) {
         test_dstr_init(size);
+        printf("[dstr]: dstr_init() passed! (1/6)\n");
         test_dstr_cap(size);
+        printf("[dstr]: dstr_cap() passed! (2/6)\n");
         test_dstr_resize_grow(size);
+        printf("[dstr]: dstr_resize_grow() passed! (3/6\n");
         test_dstr_resize_shrink(size);
+        printf("[dstr]: dstr_resize_shrink() passed! (4/6)\n");
         test_dstr_assign(size);
+        printf("[dstr]: dstr_assign() passed! (5/6)\n");
     }
     test_dstr_append();
-    
-    printf("dstr tests passed!\n");
+    printf("[dstr]: dstr_append() passed! (6/6)\n");
+    printf("[dstr]: ALL DSTR TESTS PASSED!\n\n");
     return 0;
 }

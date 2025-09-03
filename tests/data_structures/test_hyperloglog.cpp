@@ -152,14 +152,22 @@ void test_set_cache_and_get_cache() {
 
 int run_all_hll() {
     test_get_enc();
+    printf("[hll]: get_enc() passed! (1/8)\n");
     test_set_enc();
+    printf("[hll]: set_enc() passed! (2/8)\n");
     test_cache_valid_and_invalidate();
+    printf("[hll]: cache_valid_and_invalidate() passed! (3/8)\n");
     test_is_val_and_is_zero();
+    printf("[hll]: is_val_and_is_zero() passed! (4/8)\n");
     test_val_value_and_val_cnt();
+    printf("[hll]: val_value_and_val_cnt() passed! (5/8)\n");
     test_zero_cnt();
+    printf("[hll]: zero_cnt() passed! (6/8)\n");
     test_xzero_cnt();
+    printf("[hll]: xzero_cnt() passed! (7/8)\n");
     test_set_cache_and_get_cache();
-    printf("hll tests passed!\n");
+    printf("[hll]: set_cache_and_get_cache() passed! (8/8)\n");
+    printf("[hll]: ALL HLL TESTS PASSED!\n\n");
     return 0;
 }
 
