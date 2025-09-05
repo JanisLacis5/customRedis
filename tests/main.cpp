@@ -8,6 +8,10 @@
 
 int main() {
     run_all_hll();
+    printf("\n");
     run_all_dstr();
+    printf("\n");
     run_all_dlist();
+    printf("\n");
+    run_all_avl();
 }

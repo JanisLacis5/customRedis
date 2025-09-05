@@ -167,7 +167,7 @@ int run_all_hll() {
     printf("[hll]: xzero_cnt() passed! (7/8)\n");
     test_set_cache_and_get_cache();
     printf("[hll]: set_cache_and_get_cache() passed! (8/8)\n");
-    printf("[hll]: ALL HLL TESTS PASSED!\n\n");
+    printf("[hll]: ALL HLL TESTS PASSED!\n");
     return 0;
 }
 

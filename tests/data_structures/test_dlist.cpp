@@ -114,6 +114,6 @@ int run_all_dlist() {
     printf("[dlist]: dlist_insert_before() passed! (4/5)\n");
     test_dlist_insert_after();
     printf("[dlist]: dlist_insert_after() passed! (5/5)\n");
-    printf("[dlist]: ALL DLIST TESTS PASSED!\n\n");
+    printf("[dlist]: ALL DLIST TESTS PASSED!\n");
     return 0;
 }

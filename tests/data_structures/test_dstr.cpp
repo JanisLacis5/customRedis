@@ -128,7 +128,7 @@ int run_all_dstr() {
         test_dstr_cap(size);
         printf("[dstr]: dstr_cap() passed! (2/6)\n");
         test_dstr_resize_grow(size);
-        printf("[dstr]: dstr_resize_grow() passed! (3/6\n");
+        printf("[dstr]: dstr_resize_grow() passed! (3/6)\n");
         test_dstr_resize_shrink(size);
         printf("[dstr]: dstr_resize_shrink() passed! (4/6)\n");
         test_dstr_assign(size);
@@ -136,6 +136,6 @@ int run_all_dstr() {
     }
     test_dstr_append();
     printf("[dstr]: dstr_append() passed! (6/6)\n");
-    printf("[dstr]: ALL DSTR TESTS PASSED!\n\n");
+    printf("[dstr]: ALL DSTR TESTS PASSED!\n");
     return 0;
 }

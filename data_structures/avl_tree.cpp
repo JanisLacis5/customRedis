@@ -2,13 +2,6 @@
 #include "avl_tree.h"
 #include "utils/common.h"
 
-uint32_t avl_height(AVLNode *node) {
-    if (!node) {
-        return 0;
-    }
-    return 1 + dmax(avl_height(node->left), avl_height(node->right));
-}
-
 static void update_node(AVLNode *node) {
     node->height = 1 + dmax(avl_height(node->left), avl_height(node->right));
     node->size = 1 + avl_size(node->left) + avl_size(node->right);
@@ -86,6 +79,13 @@ void avl_init(AVLNode *node) {
     node->right = NULL;
     node->height = 1;
     node->size = 1;
+}
+
+uint32_t avl_height(AVLNode *node) {
+    if (!node) {
+        return 0;
+    }
+    return 1 + dmax(avl_height(node->left), avl_height(node->right));
 }
 
 // Initially called on the updated node, walks up to the root
