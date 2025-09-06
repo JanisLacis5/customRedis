@@ -6,16 +6,39 @@
 #include "data_structures/hashmap.h"
 #include "data_structures/heap.h"
 
+/* 
+    TransBlock holds an array of strings argv. This array
+    contains all command line strigs that have been provided
+    by the client in the transaction block. 
+    idxv is an array of integers which points to each command
+    like `SET`, `ZSET` etc. in the argv array. Each full command
+    like `SET janis cool` is in the range of [idxv[n], idxv[n+1])
+    in the argv array;
+*/
+struct TransBlock {
+    int argc;
+    dstr **argv; // argc arguments
+    int idxc;
+    int *idxv;
+
+    uint32_t flags; // future-proof
+
+    // for WATCH
+    HMap watched;
+};
+
 struct Conn {
     // fd returned by poll() is non-negative
     int fd = -1;
     bool want_read = false;
     bool want_write = false;
     bool want_close = false;
+    bool is_transaction = false;
 
     std::vector<uint8_t> incoming; // data for the app to process
     std::vector<uint8_t> outgoing; // responses
 
+    TransBlock transaction;
     DListNode idle_timeout;
     DListNode read_timeout;
     DListNode write_timeout;
