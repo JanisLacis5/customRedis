@@ -4,6 +4,7 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <vector>
 #include "buffer_funcs.h"
 #include "data_structures/dstr.h"
@@ -18,6 +19,10 @@ enum {
     TAG_ERROR = 4,
     TAG_DOUBLE = 5
 };
+
+static void clear_cmd() {
+    printf("\e[1;1H\e[2J");
+}
 
 static int read_all(int fd, uint8_t *buf, size_t n) {
     while (n > 0) {
@@ -182,6 +187,19 @@ static int handle_loop(int fd) {
             cmd.push_back(str);
             tmp = strtok(NULL, " ");
         }
+        
+        if (cmd.size() == 1) {
+            char *p = cmd[0]->buf;
+            for ( ; *p; p++) *p = tolower(*p);
+
+            if (!strcmp(cmd[0]->buf, "quit")) {
+                return 1;
+            }
+            if (!strcmp(cmd[0]->buf, "clear")) {
+                clear_cmd();
+                return 0;
+            }
+        }
         int err = handle_write(fd, cmd);
         if (err) {
             close(fd);
@@ -216,7 +234,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    clear_cmd();
     while (1) {
+        printf("redis> ");
         int err = handle_loop(fd);
         if (err) {
             return err;
