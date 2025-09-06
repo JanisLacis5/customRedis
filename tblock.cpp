@@ -16,8 +16,7 @@ TransBlock* tb_init() {
     return tb;
 }
 
-uint8_t tb_insert(TransBlock **ptb, std::vector<dstr*> &cmd) {
-    TransBlock *tb = *ptb;
+uint8_t tb_insert(TransBlock *tb, std::vector<dstr*> &cmd) {
     size_t cmdsize = cmd.size();
 
     if (cmdsize + tb->argcnt > tb->argcap) {

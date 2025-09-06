@@ -304,7 +304,11 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
     }
     // TODO: IMPLEMENT
     else if (!strcmp(cmd[0]->buf, "multi")) {
-        return;            
+        if (conn->is_transaction) {
+            return out_err(conn, "already in transaction mode");
+        }
+        conn->is_transaction = true;
+        out_str(conn, "OK", 2);
     }
     else if (!strcmp(cmd[0]->buf, "exec")) {
         return;        
