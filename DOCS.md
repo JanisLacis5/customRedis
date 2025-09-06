@@ -63,6 +63,7 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 │   ├── CMakeLists.txt
 │   ├── out_helpers.cpp/.h
 │   ├── redis_functions.cpp/.h
+│   ├── tblock.cpp/.h
 │   ├── server.cpp/.h
 │   ├── threadpool.cpp/.h
 │   ├── DOCS.md
@@ -92,17 +93,22 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
    ```bash
    ./build/redis_server
    ```
+
 2. **Compile client**
-   ```bash
-   g++ -Wall -Wextra client.cpp buffer_funcs.cpp -o client
-   ```
+    ```bash
+    g++ -Wall -Wextra client.cpp buffer_funcs.cpp utils/common.h data_structures/dstr.cpp -Iutils -o client  
+       ```
+
 3. **Run commands** \
    Example:
    ```bash
-   $ ./client set root 1
-   (null)
-   $ ./client get root
-   (str) 1
+   $ ./client
+
+   $ set root 1
+   > (null)
+
+   $ get root
+   > (str) 1
    ```
 
 # Architecture Overview
@@ -127,13 +133,14 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 
 ```cpp
 struct Conn {
-  int                   fd;
-  bool                  want_read;
-  bool                  want_write;
-  bool                  want_close;
+  int fd;
+  bool want_read;
+  bool want_write;
+  bool want_close;
   std::vector<uint8_t>  incoming, outgoing;
-  DListNode             idle_timeout, read_timeout, write_timeout;
-  uint64_t              last_active_ms, last_read_ms, last_write_ms;
+  TransBlock transaction;
+  DListNode idle_timeout, read_timeout, write_timeout;
+  uint64_t last_active_ms, last_read_ms, last_write_ms;
 };
 ```
 
