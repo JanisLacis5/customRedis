@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -164,6 +163,41 @@ static int handle_write(int fd, std::vector<dstr*> &query) {
     return write_all(fd, buf.data(), buf.size());
 }
 
+static int handle_loop(int fd) {
+    std::vector<dstr*> cmd;
+    char rawcmd[1024];
+
+    if (fgets(rawcmd, 1024, stdin)) {
+        // Remove the last '\n' char
+        size_t len = strlen(rawcmd);
+        if (len > 0) {
+            rawcmd[len-1] = '\0';
+        }
+
+        char *tmp = strtok(rawcmd, " ");
+        while (tmp) {
+            size_t len = strlen(tmp);
+            dstr *str = dstr_init(len);
+            dstr_append(&str, tmp, len);
+            cmd.push_back(str);
+            tmp = strtok(NULL, " ");
+        }
+        int err = handle_write(fd, cmd);
+        if (err) {
+            close(fd);
+            printf("[client]: Error sending the query\n");
+            return -1;
+        }
+        err = handle_read(fd);
+        if (err) {
+            close(fd);
+            printf("[client]: Error reading the response\n");
+            return -1;
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
     // Create the socket
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -182,23 +216,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::vector<dstr*> cmd;
-    for (int i = 1; i < argc; i++) {
-        size_t len = strlen(argv[i]);
-        dstr *str = dstr_init(len);
-        dstr_append(&str, argv[i], len);
-        cmd.push_back(str);
-    }
-    int err = handle_write(fd, cmd);
-    if (err) {
-        close(fd);
-        printf("[client]: Error sending the query\n");
-        return -1;
-    }
-    err = handle_read(fd);
-    if (err) {
-        close(fd);
-        printf("[client]: Error reading the response\n");
-        return -1;
+    while (1) {
+        int err = handle_loop(fd);
+        if (err) {
+            return err;
+        }
     }
 }

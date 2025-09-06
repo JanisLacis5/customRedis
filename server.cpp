@@ -188,6 +188,9 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
     for ( ; *p; p++) *p = tolower(*p);
 
     if (conn->is_transaction) {
+        if (!strcmp(cmd[0]->buf, "multi")) {
+            return out_err(conn, "already in transaction mode");
+        }
         uint8_t err = tb_insert(&conn->transaction, cmd);
         if (err) {
             return out_err(conn, "error adding to the transaction block\n");
@@ -304,9 +307,9 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
     }
     // TODO: IMPLEMENT
     else if (!strcmp(cmd[0]->buf, "multi")) {
-        if (conn->is_transaction) {
-            return out_err(conn, "already in transaction mode");
-        }
+        // If conn->transaction is true, we will never get here
+        // because of the 1st if in this function hence this case
+        // is not covered
         conn->is_transaction = true;
         out_str(conn, "OK", 2);
     }

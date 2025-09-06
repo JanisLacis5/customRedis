@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include "dstr.h"
-#include "utils/common.h"
+#include "common.h"
 
 
 dstr* dstr_init(size_t len) {
