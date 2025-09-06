@@ -7,17 +7,20 @@
 #include "data_structures/heap.h"
 
 /* 
-    TransBlock holds an array of strings argv. This array
+    TransBlock holds an array of strings arg. This array
     contains all command line strigs that have been provided
-    by the client in the transaction block. 
+    by the client in the transaction block. Integers argcnt and
+    argcap are respectively the size of arg array and the capacity
+    of arg array.
     idxv is an array of integers which points to each command
     like `SET`, `ZSET` etc. in the argv array. Each full command
     like `SET janis cool` is in the range of [idxv[n], idxv[n+1])
     in the argv array;
 */
 struct TransBlock {
-    int argc;
-    dstr **argv; // argc arguments
+    int argcnt;
+    int argcap;
+    dstr **arg; // argcnt arguments
     int idxc;
     int *idxv;
 

@@ -18,8 +18,10 @@
 #include "redis_functions.h"
 #include "data_structures/heap.h"
 #include "out_helpers.h"
+#include "tblock.h"
 #include "utils/common.h"
 #include "threadpool.h"
+#include "tblock.h"
 
 GlobalData global_data;
 const size_t MAX_MESSAGE_LEN = 32 << 20;
@@ -184,6 +186,16 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
     // Convert the command to lower case
     char *p = cmd[0]->buf;
     for ( ; *p; p++) *p = tolower(*p);
+
+    if (conn->is_transaction) {
+        uint8_t err = tb_insert(&conn->transaction, cmd);
+        if (err) {
+            return out_err(conn, "error adding to the transaction block\n");
+        }
+        else {
+            return out_str(conn, "OK", 2);
+        }
+    }
 
     // GLOBAL DATABASE
     if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "get")) {

@@ -18,7 +18,7 @@ void out_double(Conn *conn, double dbl) {
     buf_append_double(conn->outgoing, dbl);
 }
 
-void out_str(Conn *conn, char *str, uint32_t size) {
+void out_str(Conn *conn, const char *str, uint32_t size) {
     buf_append_u8(conn->outgoing, TAG_STR);
     buf_append_u32(conn->outgoing, size);
     buf_append(conn->outgoing, (uint8_t*)str, size);
