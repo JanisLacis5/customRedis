@@ -2,9 +2,7 @@
 #include "server.h"
 #include "tblock.h"
 
-TransBlock* tb_init() {
-    TransBlock *tb = (TransBlock*)malloc(sizeof(TransBlock));
-
+void tb_init(TransBlock *tb) {
     tb->arg = (dstr**)calloc(TB_ARG_INIT_SIZE, sizeof(dstr*));
     tb->argcap = TB_ARG_INIT_SIZE;
     tb->argcnt = 0;
@@ -13,7 +11,6 @@ TransBlock* tb_init() {
     tb->idxc = 0;
 
     tb->flags = 0;
-    return tb;
 }
 
 uint8_t tb_insert(TransBlock *tb, std::vector<dstr*> &cmd) {

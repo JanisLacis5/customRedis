@@ -4,7 +4,7 @@
 
 #define TB_ARG_INIT_SIZE 64
 
-TransBlock* tb_init();
+void tb_init(TransBlock *tb);
 uint8_t tb_insert(TransBlock *tb, std::vector<dstr*> &cmd);
 
 #endif

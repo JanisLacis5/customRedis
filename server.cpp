@@ -311,6 +311,7 @@ static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
         // because of the 1st if in this function hence this case
         // is not covered
         conn->is_transaction = true;
+        tb_init(&conn->transaction);
         out_str(conn, "OK", 2);
     }
     else if (!strcmp(cmd[0]->buf, "exec")) {
