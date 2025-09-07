@@ -43,7 +43,7 @@ static bool zless(ZNode *node, double score, dstr *key) {
     if (score != node->score) {
         return node->score < score;
     }
-    int ret = memcmp(node->key, key->buf, std::min(key->size, node->key->size));
+    int ret = memcmp(node->key->buf, key->buf, dmin(key->size, node->key->size));
     if (ret != 0) {
         return ret < 0;
     }
@@ -58,7 +58,7 @@ void zset_delete(ZSet *zset, ZNode *znode) {
     tmp.hcode = znode->h_node.hcode;
 
     zset->avl_root = avl_del(&znode->avl_node);
-    uint8_t deleted = hm_delete(&zset->hmap, &tmp);
+    uint8_t deleted = hm_delete(&zset->hmap, &tmp, false);
     if (!deleted) {
         printf("[zset] node not found\n");
     }

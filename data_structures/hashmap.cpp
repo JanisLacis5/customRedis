@@ -133,17 +133,21 @@ HNode* hm_lookup(HMap *hmap, HNode* key) {
     return slot ? *slot : NULL;
 }
 
-uint8_t hm_delete(HMap* hmap, HNode* key) {
+uint8_t hm_delete(HMap* hmap, HNode* key, bool do_free) {
     HNode **slot = ht_lookup(&hmap->older, key);
     if (slot) {
         HNode *del = ht_unlink(&hmap->older, slot);
-        free(del);
+        if (do_free) {
+            free(del);
+        }
         return 1;
     }
     slot = ht_lookup(&hmap->newer, key);
     if (slot) {
         HNode *del = ht_unlink(&hmap->newer, slot);
-        free(del);
+        if (do_free) {
+            free(del);
+        }
         return 1;
     }
     return 0;

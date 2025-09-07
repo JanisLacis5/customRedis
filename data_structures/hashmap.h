@@ -43,7 +43,7 @@ struct HNode {
 HNode* new_node(dstr *key, uint32_t type);
 HNode* hm_lookup(HMap *hmap, HNode *key);
 void hm_insert(HMap *hmap, HNode *node);
-uint8_t hm_delete(HMap *hmap, HNode *key);
+uint8_t hm_delete(HMap *hmap, HNode *key, bool do_free);
 void hm_clear(HMap *hmap);
 size_t hm_size(HMap *hmap);
 void hm_keys(HMap* hmap, std::vector<dstr*> &arg);

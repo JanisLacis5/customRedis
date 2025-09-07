@@ -105,7 +105,7 @@ static void process_timers() {
     while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
         HNode *hnode = container_of(global_data.ttl_heap[0].pos_ref, HNode, heap_idx);
         rem_ttl(hnode);
-        uint8_t deleted = hm_delete(&global_data.db, hnode);
+        uint8_t deleted = hm_delete(&global_data.db, hnode, true);
 
         if (curr_iterations++ >= MAX_TTL_TASKS) {
             break;

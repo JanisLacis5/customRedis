@@ -90,7 +90,7 @@ void do_del(Conn *conn, std::vector<dstr*> &cmd) {
     dstr_append(&tmp.key, key->buf, key->size);
     tmp.hcode = str_hash((uint8_t*)tmp.key->buf, tmp.key->size);
 
-    uint8_t deleted = hm_delete(&global_data.db, &tmp);
+    uint8_t deleted = hm_delete(&global_data.db, &tmp, true);
     if (!deleted) {
         return out_err(conn, "node does not exist");
     }
@@ -375,14 +375,14 @@ void do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
     hm_tmp.key = dstr_init(field->size);
     dstr_append(&hm_tmp.key, field->buf, field->size);
     hm_tmp.hcode = str_hash((uint8_t*)field->buf, field->size);
-    uint8_t deleted = hm_delete(&hm_node->hmap, &hm_tmp);
+    uint8_t deleted = hm_delete(&hm_node->hmap, &hm_tmp, true);
     if (!deleted) {
         return out_err(conn, "node does not exist");
     }
 
     // Delete hmap entry if it's hmap is empty
     if (hm_size(&hm_node->hmap) == 0) {
-        hm_delete(&global_data.db, hm_node);
+        hm_delete(&global_data.db, hm_node, true);
     }
     out_null(conn);
 }
@@ -606,7 +606,7 @@ void do_srem(Conn *conn, std::vector<dstr*> &cmd) {
     kkey.key = dstr_init(value->size);
     dstr_append(&kkey.key, value->buf, value->size);
     kkey.hcode = str_hash((uint8_t*)value->buf, value->size);
-    uint8_t deleted = hm_delete(&hm_node->set, &kkey);
+    uint8_t deleted = hm_delete(&hm_node->set, &kkey, true);
     return out_int(conn, deleted);
 }
 
