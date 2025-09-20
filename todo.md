@@ -10,7 +10,7 @@ Adding the other “built-in” Redis types will instantly beef up your feature 
 | Lists       | LPUSH / RPUSH / LPOP / RPOP / LRANGE | Easy–Medium  | YES   |
 | Sets        | SADD / SREM / SMEMBERS / SCARD       | Easy         | YES   |
 | Bitmaps     | SETBIT / GETBIT / BITCOUNT           | Medium       | YES   |
-| HyperLogLog | PFADD / PFCOUNT                      | Medium       | NO    |
+| HyperLogLog | PFADD / PFCOUNT                      | Medium       | YES   |
 
 **Why?** These are the staple Redis types. Even basic implementations (e.g. a `std::unordered_map<string,string>` for hashes, a `deque<string>` for lists, a `bitset` or `vector<bool>` for bitmaps) demonstrate mastery of C++ data structures and will make your clone feel *complete*.
 
@@ -54,8 +54,7 @@ So far everything lives in RAM. To keep data across restarts:
     - Periodically write your entire in-memory state to disk and load it at startup.
 
 - **AOF (Append-Only File)**
-    - Log every write command to a file. On restart, replay the log.
-    - Support “rewrite”/compaction to prevent unbounded growth.
+    - Log every write command to a file. On restart, replay the log. Support “rewrite”/compaction to prevent unbounded growth.
     - Configurable fsync via `CONFIG SET appendfsync {always, everysec, no}`.
 
 **Why?** Durability is a hallmark of production-ready servers.
@@ -98,5 +97,3 @@ Even as you build features, polish the user experience:
 
 - **Docs, Docker & CI**
     - A rock-solid README with examples, a Dockerfile, and a GitHub Actions pipeline.
-
-**Why?** Hiring managers notice well-tested, well-documented projects with CI and clear metrics.
