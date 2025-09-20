@@ -14,7 +14,6 @@ struct Command {
 struct TB {
     bool alive = true;
     Command *commands;
-    HMap watched_keys;
 };
 
 struct Conn {
@@ -39,6 +38,7 @@ struct Conn {
 
 struct GlobalData {
     HMap db;
+    HMap watched_keys;  // key: linked list of watcher fd's
     DListNode idle_list;
     DListNode read_list;
     DListNode write_list;
