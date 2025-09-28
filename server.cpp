@@ -377,9 +377,11 @@ static Conn* handle_accept(int fd) {
     if (connfd < 0) {
         return NULL;
     }
-
+    
+    // Make the conn non-blocking + add it to the alive conn's array
     fd_set_non_blocking(connfd);
-
+    
+    // Create the Conn object
     Conn *conn = new Conn();
     conn->fd = connfd;
     conn->want_read = true;
@@ -387,6 +389,7 @@ static Conn* handle_accept(int fd) {
     conn->last_read_ms = get_curr_ms();
     conn->last_write_ms = get_curr_ms();
     dlist_insert_before(&global_data.idle_list, &conn->idle_timeout);
+
     return conn;
 }
 
