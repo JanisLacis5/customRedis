@@ -433,7 +433,8 @@ void do_push(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
     new_node->prev = NULL;
     new_node->next = NULL;
     new_node->val = dstr_init(value->size);
-    dstr_append(&new_node->val, value->buf, value->size);
+    dstr *val = (dstr*)new_node->val;
+    dstr_append(&val, value->buf, value->size);
 
     if (!hm_node->list.size) {
         hm_node->list.head = new_node;
@@ -481,7 +482,8 @@ void do_pop(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
     out_arr(conn, size);
     while (size--) {
         DListNode *node = side == LLIST_SIDE_LEFT ? hm_node->list.head : hm_node->list.tail;
-        out_str(conn, node->val->buf, node->val->size);
+        dstr *val = (dstr*)node->val;
+        out_str(conn, val->buf, val->size);
 
         if (side == LLIST_SIDE_LEFT) {
             if (node->next) {
@@ -555,7 +557,8 @@ void do_lrange(Conn *conn, std::vector<dstr*> &cmd) {
     out_arr(conn, size);
 
     while (size--) {
-        out_str(conn, begin->val->buf, begin->val->size);
+        dstr *val = (dstr*)begin->val;
+        out_str(conn, val->buf, val->size);
         begin = begin->next;
     }
 }
