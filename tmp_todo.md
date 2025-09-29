@@ -1,14 +1,16 @@
 # Structs
 ```c
 enum UNALIVE_REASON {
-    KEY_MODIFIED = 1
+    KEY_MODIFIED = 1,
+    KEY_EXPIRED = 2,
+    QUEUE_ERROR = 3
 };
 ```
 
 ```c
 struct Command {
     int argc;  // no of arguments
-    char *argv;  // argument array
+    dstr **argv;  // argument array
 };
 ```
 
@@ -16,15 +18,19 @@ struct Command {
 struct TB {
     bool alive = true;  // Whether this block is alive or not
     int unalive_reason = -1;  // UNALIVE_REASON
-    Command *commands;  // Array of commands that must be executed int his transaction block
+    int cmdlen;  // len(cmdv)
+    int cmdcap;  // total capacity of the cmdv array
+    Command *cmdv;  // Array of commands that must be executed int his transaction block
 };
 ```
 
 ```c
 struct Conn {
     ...
+    int id;  // 64 bit hash for an id
     bool in_multi = false;  // flag that tells if conn is in multi mode (does not execute commands)
     TB *tb = NULL;  // if there is a transaction block (in_multi == true) it is here
+    DList watched_keys;  // DList<WatchNode> for O(n) cleanup after exiting the multi mode
 };
 ```
 
@@ -38,7 +44,6 @@ struct WatchNode {
 ```c
 struct GlobalDB {
     ...
-    int allowed_conn_fd = -1;  // -1 if not it 'blocking mode', else > 0
     HMap watched_keys;  // map<string, DList<WatchNode>> - the string is the key
     DList alive_conns;  // list of alive connections, for O(1) lookups, GlobalDB->fd_to_conn array exists 
 };
@@ -58,15 +63,14 @@ struct GlobalDB {
     - Returns "OK" to every valid query
     - Returns the error + unalives the transaction block (conn->tb->alive = false)
 2) *WATCH*
-    - Adds the conn->fd to the global_data->watched_keys[key] list
-    - Returns "OK" no matter what as this cant really fail
+    - Adds the conn->id to the global_data->watched_keys[key] list
+    - Returns "OK" if not in multi mode, else a message that it cant be done, nothing changes though
 3) *EXEC*
     - Checks if the transaction block is alive
-    - Enters 'blocking mode' - other clients cannot modify data (global_data->allowed_conn_fd = conn->fd)
     - Loops over commands in conn->tb->commands, for each command:
         - execute command
         - return the answer
-    - Exits multi mode (conn->in_multi = false) and removes 'blocking mode' (global_data->allowed_conn_fd = -1)
+    - Exits multi mode (conn->in_multi = false)
     - State is cleaned up on a seperate thread (remove conn from global_data->watched_keys)
 
 # How it works
@@ -81,6 +85,7 @@ struct GlobalDB {
 
 # Edge cases
 - *MULTI* in *MULTI* (nested multi's) --> message that it is not possible, nothing else changes, exec will still be valid
+- Key expires (hits the TTL)
 
 # Facts
 - Commands get executed up until an error and are NOT rolled back
