@@ -39,7 +39,7 @@ struct Conn {
 struct GlobalData {
     HMap db;
     HMap watched_keys;  // key: linked list of watcher fd's
-    DList alive_conns;
+    DListNode alive_conns;
     DListNode idle_list;
     DListNode read_list;
     DListNode write_list;
