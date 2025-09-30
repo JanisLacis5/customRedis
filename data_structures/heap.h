@@ -2,6 +2,7 @@
 #define HEAP_H
 
 #include <stdint.h>
+#include <vector>
 
 struct HeapNode {
     uint64_t val;  // unsigned because it is used for timeouts

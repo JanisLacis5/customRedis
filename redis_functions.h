@@ -1,7 +1,6 @@
 #ifndef REDIS_FUNCTIONS_H
 #define REDIS_FUNCTIONS_H
 
-#include "data_structures/hashmap.h"
 #include "data_structures/heap.h"
 #include "server.h"
 
@@ -10,11 +9,15 @@ enum SIDE {
     LLIST_SIDE_RIGHT = 1
 };
 
+enum RETURN_VALS {
+    NOT_FOUND = 1
+};
+
 // Keyspace functions
-void do_get(Conn *conn, std::vector<dstr*> &cmd);
-void do_set(Conn *conn, std::vector<dstr*> &cmd);
-void do_del(Conn *conn, std::vector<dstr*> &cmd);
-void do_keys(Conn *conn);
+uint16_t do_get(Conn *conn, std::vector<dstr*> &cmd);
+uint16_t do_set(Conn *conn, std::vector<dstr*> &cmd);
+uint16_t do_del(Conn *conn, std::vector<dstr*> &cmd);
+uint16_t do_keys(Conn *conn);
 
 // Sorted set functions
 void do_zadd(Conn *conn, std::vector<dstr*> &cmd);

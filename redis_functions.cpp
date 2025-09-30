@@ -40,7 +40,7 @@ static bool validate_hmnode(Conn *conn, HNode *hm_node, uint32_t type) {
     return true;
 }
 
-void do_get(Conn *conn, std::vector<dstr*> &cmd) {
+uint16_t do_get(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -52,13 +52,15 @@ void do_get(Conn *conn, std::vector<dstr*> &cmd) {
     HNode *node = hm_lookup(&global_data.db, &tmp);
     if (!node) {
         out_not_found(conn);
+        return NOT_FOUND;
     }
     else {
         out_str(conn, node->val->buf, node->val->size);
+        return SUCCESS;
     }
 }
 
-void do_set(Conn *conn, std::vector<dstr*> &cmd) {
+uint16_t do_set(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *val = cmd[2];
@@ -78,10 +80,11 @@ void do_set(Conn *conn, std::vector<dstr*> &cmd) {
         hm_insert(&global_data.db, hm_node);
     }
     buf_append_u8(conn->outgoing, TAG_NULL);
+    return SUCCESS;
 }
 
 
-void do_del(Conn *conn, std::vector<dstr*> &cmd) {
+uint16_t do_del(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -92,12 +95,15 @@ void do_del(Conn *conn, std::vector<dstr*> &cmd) {
 
     uint8_t deleted = hm_delete(&global_data.db, &tmp, true);
     if (!deleted) {
-        return out_err(conn, "node does not exist");
+        out_err(conn, "node does not exist");
+        return NOT_FOUND;
     }
+
     buf_append_u8(conn->outgoing, TAG_NULL);
+    return SUCCESS;
 }
 
-void do_keys(Conn *conn) {
+uint16_t do_keys(Conn *conn) {
     std::vector<dstr*> keys;
     hm_keys(&global_data.db, keys);
 
@@ -105,6 +111,7 @@ void do_keys(Conn *conn) {
     for (dstr *key: keys) {
         out_str(conn, key->buf, key->size);
     }
+    return SUCCESS;
 }
 
 // Adds 1 if node was inserted, 0 if node was updated (this key existed in the set already)
