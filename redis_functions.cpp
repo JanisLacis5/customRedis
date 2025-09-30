@@ -31,16 +31,16 @@ static ZSet* find_zset(HMap *hmap, dstr *key) {
 static bool validate_hmnode(Conn *conn, HNode *hm_node, uint32_t type) {
     if (!hm_node) {
         out_err(conn, "key does not exist");
-        return false;
+        return NOT_FOUND;
     }
     if (hm_node->type != type) {
         out_err(conn, "key already exists in database but is not the correct type");
-        return false;
+        return INCORRECT_TYPE;
     }
-    return true;
+    return SUCCESS;
 }
 
-uint16_t do_get(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_get(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -60,7 +60,7 @@ uint16_t do_get(Conn *conn, std::vector<dstr*> &cmd) {
     }
 }
 
-uint16_t do_set(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_set(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *val = cmd[2];
@@ -84,7 +84,7 @@ uint16_t do_set(Conn *conn, std::vector<dstr*> &cmd) {
 }
 
 
-uint16_t do_del(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_del(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -103,7 +103,7 @@ uint16_t do_del(Conn *conn, std::vector<dstr*> &cmd) {
     return SUCCESS;
 }
 
-uint16_t do_keys(Conn *conn) {
+uint8_t do_keys(Conn *conn) {
     std::vector<dstr*> keys;
     hm_keys(&global_data.db, keys);
 
@@ -115,7 +115,7 @@ uint16_t do_keys(Conn *conn) {
 }
 
 // Adds 1 if node was inserted, 0 if node was updated (this key existed in the set already)
-void do_zadd(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_zadd(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     double score = strtod(cmd[2]->buf, NULL);
@@ -135,15 +135,17 @@ void do_zadd(Conn *conn, std::vector<dstr*> &cmd) {
     }
 
     if (node->type != T_ZSET) {
-        return out_err(conn, "cant add zset to a non-zset node");
+        out_err(conn, "cant add zset to a non-zset node");
+        return INCORRECT_TYPE;
     }
 
     int inserted = zset_insert(node->zset, score, member);
     out_int(conn, inserted);  // 1 if inserted else 0
+    return SUCCESS;
 }
 
 // Adds SCORE if found, NULL if not found, ERROR if set does not exist
-void do_zscore(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_zscore(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *member = cmd[2];
@@ -153,13 +155,14 @@ void do_zscore(Conn *conn, std::vector<dstr*> &cmd) {
 
     if (!ret) {
         buf_append_u8(conn->outgoing, TAG_NULL);
-        return;
+        return SUCCESS;
     }
     out_double(conn, ret->score);
+    return SUCCESS;
 }
 
 // Adds 0 if the key or set was not found and not deleted, 1 if key was deleted
-void do_zrem(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_zrem(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *member = cmd[2];
@@ -171,11 +174,12 @@ void do_zrem(Conn *conn, std::vector<dstr*> &cmd) {
     ZNode *znode = zset_lookup(zset, member);
     if (!znode) {
         out_int(conn, 0);
-        return;
+        return SUCCESS;
     }
 
     zset_delete(zset, znode);
     out_int(conn, 1);
+    return SUCCESS;
 }
 
 /*
@@ -186,7 +190,7 @@ void do_zrem(Conn *conn, std::vector<dstr*> &cmd) {
  *  uint32_t offset - how many qualifying tuples to skip before starting to return results
  *  uint32_t limit - the maximum number of pairs to return after applying the offset
  */
-void do_zrangequery(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_zrangequery(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     double score_lb = strtod(cmd[2]->buf, NULL);
@@ -200,7 +204,7 @@ void do_zrangequery(Conn *conn, std::vector<dstr*> &cmd) {
     ZNode *lb = zset_lower_bound(zset, score_lb, key_lb);
     if (!lb) {
         out_arr(conn, 0);
-        return;
+        return SUCCESS;
     }
 
     // Get the first node to return (offset)
@@ -220,9 +224,10 @@ void do_zrangequery(Conn *conn, std::vector<dstr*> &cmd) {
 
     // Add size
     memcpy(&conn->outgoing[size_pos], &size, 4);
+    return SUCCESS;
 }
 
-void do_expire(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_expire(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     uint64_t ttl_ms = strtoll(cmd[2]->buf, NULL, 10);
@@ -235,14 +240,16 @@ void do_expire(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hnode = hm_lookup(&global_data.db, &tmp);
     if (!hnode) {
-        return out_null(conn);
+        out_null(conn);
+        return SUCCESS;
     }
 
     set_ttl(hnode, ttl_ms);
     out_null(conn);
+    return SUCCESS;
 }
 
-void do_ttl(Conn *conn, std::vector<dstr*> &cmd, std::vector<HeapNode> &heap, uint32_t curr_ms) {
+uint8_t do_ttl(Conn *conn, std::vector<dstr*> &cmd, std::vector<HeapNode> &heap, uint32_t curr_ms) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -253,14 +260,16 @@ void do_ttl(Conn *conn, std::vector<dstr*> &cmd, std::vector<HeapNode> &heap, ui
 
     HNode *hnode = hm_lookup(&global_data.db, &tmp);
     if (!hnode) {
-        return out_null(conn);
+        out_null(conn);
+        return SUCCESS;
     }
 
     uint32_t ttl = (heap[hnode->heap_idx].val - curr_ms) / 1000;
     out_int(conn, ttl);
+    return SUCCESS;
 }
 
-void do_persist(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_persist(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -271,14 +280,16 @@ void do_persist(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hnode = hm_lookup(&global_data.db, &tmp);
     if (!hnode) {
-        return out_null(conn);
+        out_null(conn);
+        return SUCCESS;
     }
 
     rem_ttl(hnode);
     out_null(conn);
+    return SUCCESS;
 }
 
-void do_hset(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_hset(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *field = cmd[2];
@@ -298,7 +309,8 @@ void do_hset(Conn *conn, std::vector<dstr*> &cmd) {
 
     // Find hmap entry
     if (hm_node->type != T_HSET) {
-        return out_err(conn, "keyspace key is not of type hashmap");
+        out_err(conn, "keyspace key is not of type hashmap");
+        return INCORRECT_TYPE;
     }
 
     // Find the key node in the entry hashmap
@@ -310,7 +322,8 @@ void do_hset(Conn *conn, std::vector<dstr*> &cmd) {
 
     if (node) {
         if (node->type != T_STR) {
-            return out_err(conn, "[hset] node is not of type STR");
+            out_err(conn, "[hset] node is not of type STR");
+            return INCORRECT_TYPE;
         }
         node->val = dstr_init(value->size);
         dstr_append(&node->val, value->buf, value->size);
@@ -322,9 +335,10 @@ void do_hset(Conn *conn, std::vector<dstr*> &cmd) {
         hm_insert(&hm_node->hmap, set_node);
     }
     out_null(conn);
+    return SUCCESS;
 }
 
-void do_hget(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_hget(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *field = cmd[2];
@@ -337,11 +351,13 @@ void do_hget(Conn *conn, std::vector<dstr*> &cmd) {
     // Find the hashmap in which the hget is being done
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_null(conn);
+        out_null(conn);
+        return SUCCESS;
     }
 
     if (hm_node->type != T_HSET) {
-        return out_err(conn, "keyspace key is not of type hashmap");
+        out_err(conn, "keyspace key is not of type hashmap");
+        return INCORRECT_TYPE;
     }
 
     // Find the key node in the hashmap
@@ -352,12 +368,14 @@ void do_hget(Conn *conn, std::vector<dstr*> &cmd) {
     HNode *node = hm_lookup(&hm_node->hmap, &hm_tmp);
 
     if (node && node->type == T_STR) {
-        return out_str(conn, node->val->buf, node->val->size);
+        out_str(conn, node->val->buf, node->val->size);
+        return SUCCESS;
     }
     out_null(conn);
+    return SUCCESS;
 }
 
-void do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *field =cmd[2];
@@ -369,12 +387,14 @@ void do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
     tmp.hcode = str_hash((uint8_t*)key->buf, key->size);
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_null(conn);
+        out_null(conn);
+        return SUCCESS;
     }
 
     // Find hmap entry
     if (hm_node->type != T_HSET) {
-        return out_err(conn, "keyspace key is not of type hashmap");
+        out_err(conn, "keyspace key is not of type hashmap");
+        return SUCCESS;
     }
 
     // Find the key node in the entry hashmap
@@ -384,7 +404,8 @@ void do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
     hm_tmp.hcode = str_hash((uint8_t*)field->buf, field->size);
     uint8_t deleted = hm_delete(&hm_node->hmap, &hm_tmp, true);
     if (!deleted) {
-        return out_err(conn, "node does not exist");
+        out_err(conn, "node does not exist");
+        return NOT_FOUND;
     }
 
     // Delete hmap entry if it's hmap is empty
@@ -392,9 +413,10 @@ void do_hdel(Conn *conn, std::vector<dstr*> &cmd) {
         hm_delete(&global_data.db, hm_node, true);
     }
     out_null(conn);
+    return SUCCESS;
 }
 
-void do_hgetall(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_hgetall(Conn *conn, std::vector<dstr*> &cmd) {
     dstr *key = cmd[1];
 
     // Find the hmap node
@@ -405,7 +427,8 @@ void do_hgetall(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_null(conn);
+        out_null(conn);
+        return SUCCESS;
     }
 
     std::vector<dstr*> keys;
@@ -415,9 +438,10 @@ void do_hgetall(Conn *conn, std::vector<dstr*> &cmd) {
     for (dstr *key: keys) {
         out_str(conn, key->buf, key->size);
     }
+    return SUCCESS;
 }
 
-void do_push(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
+uint8_t do_push(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
     // ARGS
     dstr *key = cmd[1];
     dstr *value = cmd[2];
@@ -433,7 +457,8 @@ void do_push(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
         hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_LIST) {
-        return out_err(conn, "node with the provided key exists and is not of type LIST");
+        out_err(conn, "node with the provided key exists and is not of type LIST");
+        return INCORRECT_TYPE;
     }
 
     DListNode *new_node = (DListNode*)malloc(sizeof(DListNode));
@@ -456,13 +481,15 @@ void do_push(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
         hm_node->list.tail = new_node;
     }
     else {
-        return out_err(conn, "internal error (do_push() side != 0 or 1)");
+        out_err(conn, "internal error (do_push() side != 0 or 1)");
+        return INTERNAL_ERR;
     }
 
-    return out_int(conn, ++hm_node->list.size);
+    out_int(conn, ++hm_node->list.size);
+    return SUCCESS;
 }
 
-void do_pop(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
+uint8_t do_pop(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
     // ARGS
     dstr *key = cmd[1];
     dstr *value = cmd[2];
@@ -474,16 +501,19 @@ void do_pop(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "key does not exist in the database");
+        out_err(conn, "key does not exist in the database");
+        return NOT_FOUND;
     }
     if (hm_node && hm_node->type != T_LIST) {
-        return out_err(conn, "node with the provided key exists and is not of type LIST");
+        out_err(conn, "node with the provided key exists and is not of type LIST");
+        return INCORRECT_TYPE;
     }
 
-    uint32_t size = cmd.size() > 2 ? strtol(cmd[2]->buf, NULL, 10) : 1;
-    size = std::min(size, hm_node->list.size);
+    int32_t size = cmd.size() > 2 ? strtol(cmd[2]->buf, NULL, 10) : 1;
+    size = dmin(size, hm_node->list.size);
     if (size <= 0) {
-        return out_err(conn, "value must be positive");
+        out_err(conn, "value must be positive");
+        return SIZE_ERR;
     }
 
     out_arr(conn, size);
@@ -511,9 +541,10 @@ void do_pop(Conn *conn, std::vector<dstr*> &cmd, uint8_t side) {
         hm_node->list.size--;
         free(node);
     }
+    return SUCCESS;
 }
 
-void do_lrange(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_lrange(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     int32_t start = strtol(cmd[2]->buf, NULL, 10);
@@ -526,10 +557,12 @@ void do_lrange(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "key does not exist in the database");
+        out_err(conn, "key does not exist in the database");
+        return NOT_FOUND;
     }
     if (hm_node->type != T_LIST) {
-        return out_err(conn, "node with the provided key exists and is not of type LIST");
+        out_err(conn, "node with the provided key exists and is not of type LIST");
+        return INCORRECT_TYPE;
     }
 
     if (start < 0) {
@@ -539,7 +572,8 @@ void do_lrange(Conn *conn, std::vector<dstr*> &cmd) {
         end = hm_node->list.size + end;
     }
     if (start >= hm_node->list.size) {
-        return out_err(conn, "index out of range");
+        out_err(conn, "index out of range");
+        return OUT_OF_RANGE;
     }
 
     uint32_t l = start;
@@ -568,9 +602,10 @@ void do_lrange(Conn *conn, std::vector<dstr*> &cmd) {
         out_str(conn, val->buf, val->size);
         begin = begin->next;
     }
+    return SUCCESS;
 }
 
-void do_sadd(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_sadd(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *value = cmd[2];
@@ -586,15 +621,17 @@ void do_sadd(Conn *conn, std::vector<dstr*> &cmd) {
         hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_SET) {
-        return out_err(conn, "key already exists in the database and is not of type SET");
+        out_err(conn, "key already exists in the database and is not of type SET");
+        return INCORRECT_TYPE;
     }
 
     // Add a hnode without value - key will be the value
     HNode *in_node = new_node(value, T_STR);
     hm_insert(&hm_node->set, in_node);
+    return SUCCESS;
 }
 
-void do_srem(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_srem(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *value = cmd[2];
@@ -606,10 +643,12 @@ void do_srem(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "node with the provided key does not exist");
+        out_err(conn, "node with the provided key does not exist");
+        return NOT_FOUND;
     }
     if (hm_node->type != T_SET) {
-        return out_err(conn, "key is not of type SET");
+        out_err(conn, "key is not of type SET");
+        return INCORRECT_TYPE;
     }
 
     HNode kkey;
@@ -617,10 +656,12 @@ void do_srem(Conn *conn, std::vector<dstr*> &cmd) {
     dstr_append(&kkey.key, value->buf, value->size);
     kkey.hcode = str_hash((uint8_t*)value->buf, value->size);
     uint8_t deleted = hm_delete(&hm_node->set, &kkey, true);
-    return out_int(conn, deleted);
+
+    out_int(conn, deleted);
+    return SUCCESS;
 }
 
-void do_smembers(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_smembers(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -631,10 +672,12 @@ void do_smembers(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "node with the provided key does not exist");
+        out_err(conn, "node with the provided key does not exist");
+        return NOT_FOUND;
     }
     if (hm_node->type != T_SET) {
-        return out_err(conn, "key is not of type SET");
+        out_err(conn, "key is not of type SET");
+        return INCORRECT_TYPE;
     }
 
     std::vector<dstr*> keys;
@@ -643,9 +686,10 @@ void do_smembers(Conn *conn, std::vector<dstr*> &cmd) {
     for (dstr *key: keys) {
         out_str(conn, key->buf, key->size);
     }
+    return SUCCESS;
 }
 
-void do_scard(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_scard(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -656,18 +700,20 @@ void do_scard(Conn *conn, std::vector<dstr*> &cmd) {
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
     if (!hm_node) {
-        return out_err(conn, "node with the provided key does not exist");
+        out_err(conn, "node with the provided key does not exist");
+        return NOT_FOUND;
     }
     if (hm_node->type != T_SET) {
-        return out_err(conn, "key is not of type SET\n");
+        out_err(conn, "key is not of type SET");
+        return INCORRECT_TYPE;
     }
 
     size_t size = hm_size(&hm_node->set);
     out_int(conn, size);
+    return SUCCESS;
 }
 
-
-void do_setbit(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_setbit(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *bit_pos = cmd[2];
@@ -684,16 +730,19 @@ void do_setbit(Conn *conn, std::vector<dstr*> &cmd) {
         hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_BITMAP) {
-        return out_err(conn, "key already exists in database but is not of type BITMAP");
+        out_err(conn, "key already exists in database but is not of type BITMAP");
+        return INCORRECT_TYPE;
     }
 
     // Get the bit index
     int64_t bit_idx = strtol(bit_pos->buf, NULL, 10);
     if (bit_idx < 0 || bit_idx > UINT32_MAX) {
-        return out_err(conn, "index must be in range [0, 2^32-1]");
+        out_err(conn, "index must be in range [0, 2^32-1]");
+        return OUT_OF_RANGE;
     }
     if (strcmp(bit_value->buf, "0") && strcmp(bit_value->buf, "1")) {
-        return out_err(conn, "bit has to be 0 or 1");
+        out_err(conn, "bit has to be 0 or 1");
+        return INCORRECT_TYPE;
     }
     int64_t byte_idx = bit_idx / 8;
     bit_idx = 7 - (bit_idx % 8);
@@ -703,7 +752,8 @@ void do_setbit(Conn *conn, std::vector<dstr*> &cmd) {
     if (byte_idx >= bitmap_size) {
         uint8_t err = dstr_resize(&hm_node->bitmap, byte_idx + 1, '\0');
         if (err) {
-            return out_err(conn, "bitmap resize failed");
+            out_err(conn, "bitmap resize failed");
+            return INTERNAL_ERR;
         }
     }
 
@@ -720,9 +770,10 @@ void do_setbit(Conn *conn, std::vector<dstr*> &cmd) {
         byte &= ~(1u << bit_idx);
     }
     hm_node->bitmap->buf[byte_idx] = byte;
+    return SUCCESS;
 }
 
-void do_getbit(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_getbit(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *bit_pos = cmd[2];
@@ -733,13 +784,15 @@ void do_getbit(Conn *conn, std::vector<dstr*> &cmd) {
     tmp.hcode = str_hash((uint8_t*)key->buf, key->size);
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
-    if (!validate_hmnode(conn, hm_node, T_BITMAP)) {
-        return;
-    }
+    uint8_t invalid = validate_hmnode(conn, hm_node, T_BITMAP);
+    if (invalid) {
+        return invalid;
+    } 
 
     int64_t bit_idx = strtol(bit_pos->buf, NULL, 10);
     if (bit_idx < 0 || bit_idx / 8 >= hm_node->bitmap->size) {
-        return out_err(conn, "index outside of range");
+        out_err(conn, "index outside of range");
+        return OUT_OF_RANGE;
     }
     uint32_t byte_idx = bit_idx / 8;
     bit_idx = 7 - (bit_idx % 8);
@@ -747,9 +800,10 @@ void do_getbit(Conn *conn, std::vector<dstr*> &cmd) {
     uint8_t byte = hm_node->bitmap->buf[byte_idx];
     uint32_t bit = (byte >> bit_idx) & 1;
     out_int(conn, bit);
+    return SUCCESS;
 }
 
-void do_bitcount(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_bitcount(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     int64_t start = cmd.size() > 2 ? strtol(cmd[2]->buf, NULL, 10) : 0;
@@ -762,9 +816,10 @@ void do_bitcount(Conn *conn, std::vector<dstr*> &cmd) {
     tmp.hcode = str_hash((uint8_t*)key->buf, key->size);
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
-    if (!validate_hmnode(conn, hm_node, T_BITMAP)) {
-        return;
-    }
+    uint8_t invalid = validate_hmnode(conn, hm_node, T_BITMAP);
+    if (invalid) {
+        return invalid;
+    } 
 
     size_t ret = 0;
     if (is_byte_mode) {
@@ -801,9 +856,10 @@ void do_bitcount(Conn *conn, std::vector<dstr*> &cmd) {
         }
     }
     out_int(conn, ret);
+    return SUCCESS;
 }
 
-void do_pfadd(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_pfadd(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
     dstr *val = cmd[2];
@@ -819,14 +875,16 @@ void do_pfadd(Conn *conn, std::vector<dstr*> &cmd) {
         hm_insert(&global_data.db, hm_node);
     }
     if (hm_node->type != T_HLL) {
-        return out_err(conn, "wrong type");
+        out_err(conn, "wrong type");
+        return INCORRECT_TYPE;
     }
 
     uint8_t is_added = hll_add(&hm_node->hll, val);
     out_int(conn, is_added);
+    return SUCCESS;
 }
 
-void do_pfcount(Conn *conn, std::vector<dstr*> &cmd) {
+uint8_t do_pfcount(Conn *conn, std::vector<dstr*> &cmd) {
     // ARGS
     dstr *key = cmd[1];
 
@@ -836,12 +894,14 @@ void do_pfcount(Conn *conn, std::vector<dstr*> &cmd) {
     tmp.hcode = str_hash((uint8_t*)key->buf, key->size);
 
     HNode *hm_node = hm_lookup(&global_data.db, &tmp);
-    if (!validate_hmnode(conn, hm_node, T_HLL)) {
-        return;
-    }
+    uint8_t invalid = validate_hmnode(conn, hm_node, T_HLL);
+    if (invalid) {
+        return invalid;
+    } 
 
     uint64_t count = hll_count(hm_node->hll);
     out_int(conn, count);
+    return SUCCESS;
 }
 
-void do_pfmerge(Conn *conn, std::vector<dstr*> &cmd) {}
+uint8_t do_pfmerge(Conn *conn, std::vector<dstr*> &cmd) {}
