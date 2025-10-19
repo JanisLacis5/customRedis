@@ -50,7 +50,6 @@ struct GlobalDB {
 ```
 
 # Prerequisites
-- all `do_*` functions from redis_functions.cpp have to return 1 for error or 0 for success
 - keep track of alive conn's
 - remove inactive conn's from alive_conns
 - make a checker that checks if a command is valid

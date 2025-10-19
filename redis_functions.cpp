@@ -28,7 +28,7 @@ static ZSet* find_zset(HMap *hmap, dstr *key) {
     return node->type == T_ZSET ? node->zset : NULL;
 }
 
-static bool validate_hmnode(Conn *conn, HNode *hm_node, uint32_t type) {
+static uint8_t validate_hmnode(Conn *conn, HNode *hm_node, uint32_t type) {
     if (!hm_node) {
         out_err(conn, "key does not exist");
         return NOT_FOUND;
