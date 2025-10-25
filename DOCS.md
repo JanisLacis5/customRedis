@@ -29,7 +29,8 @@ networking, custom data structures, concurrency and low level development overal
 - **Sorted sets**: `ZADD`, `ZSCORE`, `ZREM`, `ZQUERY` (range query by score)
 - **Key expiration**: `EXPIRE`, `TTL`, `PERSIST`
 - **Non-blocking I/O** using `poll()` and configurable timeouts
-- **Custom data structures**: hash map, min-heap for TTL, zset (AVL + heap), doubly linked list for timeouts, hyperloglog
+- **Custom data structures**: hash map, min-heap for TTL, zset (AVL + heap), doubly linked list for timeouts,
+  hyperloglog
 - **Thread pool** for offloading expensive operations
 
 ---
@@ -37,41 +38,59 @@ networking, custom data structures, concurrency and low level development overal
 # Directory Structure
 
 ```text
-├── customRedis
-│   ├── data_structures  // Directory that holds everything about data strucutres
-│   │   ├── avl_tree.cpp/.h
-│   │   ├── dlist.cpp/.h
-│   │   ├── hashmap.cpp/.h
-│   │   ├── heap.cpp/.h
-│   │   ├── zset.cpp/.h
-│   ├── tests  // Tests to be impelemented
-│   │   ├── run_all_tests.sh
-│   │   ├── test_avl.cpp
-│   │   ├── test_avl_deletion.cpp
-│   │   ├── test_cmd.py
-│   │   ├── test_error_cases.py
-│   │   ├── test_expiration.py
+├── assets
+│   └── demo.gif
+├── src
+│   ├── buffer_funcs.cpp
+│   ├── buffer_funcs.h
+│   ├── client.cpp
+│   ├── data_structures
+│   │   ├── avl_tree.cpp
+│   │   ├── avl_tree.h
+│   │   ├── darray.cpp
+│   │   ├── darray.h
+│   │   ├── dlist.cpp
+│   │   ├── dlist.h
+│   │   ├── dstr.cpp
+│   │   ├── dstr.h
+│   │   ├── hashmap.cpp
+│   │   ├── hashmap.h
+│   │   ├── heap.cpp
+│   │   ├── heap.h
+│   │   ├── hyperloglog.cpp
+│   │   ├── hyperloglog.h
+│   │   ├── zset.cpp
+│   │   └── zset.h
+│   ├── out_helpers.cpp
+│   ├── out_helpers.h
+│   ├── redis_functions.cpp
+│   ├── redis_functions.h
+│   ├── server.cpp
+│   ├── server.h
+│   ├── tblock.cpp
+│   ├── tblock.h
+│   ├── threadpool.cpp
+│   ├── threadpool.h
+│   └── utils
+│       └── common.h
+├── tests
+│   ├── CMakeLists.txt
+│   ├── data_structures
+│   │   ├── test_avl_tree.cpp
+│   │   ├── test_dlist.cpp
+│   │   ├── test_dstr.cpp
 │   │   ├── test_hashmap.cpp
 │   │   ├── test_heap.cpp
-│   │   ├── test_hqueries.py
-│   │   ├── test_performance.py
+│   │   ├── test_hyperloglog.cpp
 │   │   └── test_zset.cpp
-│   ├── tmp  // Mostly notes and ChatGPT generated files
-│   │   ├── test_roadmap.md
-│   │   └── tmp_todo.md
-│   ├── utils
-│   │   └── common.h
-│   ├── buffer_funcs.cpp/.h
-│   ├── client.cpp
-│   ├── CMakeLists.txt
-│   ├── out_helpers.cpp/.h
-│   ├── redis_functions.cpp/.h
-│   ├── tblock.cpp/.h
-│   ├── server.cpp/.h
-│   ├── threadpool.cpp/.h
-│   ├── README.md
-│   ├── DOCS.md
-│   └── todo.md 
+│   └── main.cpp
+├── tmp
+│   ├── test_roadmap.md
+│   └── tmp_todo.md
+├── CMakeLists.txt
+├── DOCS.md
+├── README.md
+└── todo.md
 ```
 
 ---
@@ -103,7 +122,7 @@ networking, custom data structures, concurrency and low level development overal
     g++ -Wall -Wextra client.cpp buffer_funcs.cpp utils/common.h data_structures/dstr.cpp -Iutils -o client  
    ```
 
-3. **Run the CLI** 
+3. **Run the CLI**
    ```bash
     ./client
    ```
