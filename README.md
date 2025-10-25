@@ -23,6 +23,8 @@ knowledge on data structures and algorithms.
 
 ## Example Video
 
+![Demo](assets/demo.gif)
+
 ---
 
 ## Main Features
