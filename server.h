@@ -8,12 +8,12 @@
 
 struct Command {
     int argc;
-    int *argv;
+    int* argv;
 };
 
 struct TB {
     bool alive = true;
-    Command *commands;
+    Command* commands;
 };
 
 struct Conn {
@@ -27,7 +27,7 @@ struct Conn {
     std::vector<uint8_t> incoming; // data for the app to process
     std::vector<uint8_t> outgoing; // responses
 
-    TB *tb = NULL;
+    TB* tb = NULL;
     DListNode idle_timeout;
     DListNode read_timeout;
     DListNode write_timeout;
@@ -38,7 +38,7 @@ struct Conn {
 
 struct GlobalData {
     HMap db;
-    HMap watched_keys;  // key: linked list of watcher fd's
+    HMap watched_keys; // key: linked list of watcher fd's
     DListNode alive_conns;
     DListNode idle_list;
     DListNode read_list;
@@ -50,7 +50,7 @@ struct GlobalData {
 
 extern GlobalData global_data;
 uint64_t get_curr_ms();
-void set_ttl(HNode *node, uint64_t ttl);
-void rem_ttl(HNode *node);
+void set_ttl(HNode* node, uint64_t ttl);
+void rem_ttl(HNode* node);
 
 #endif

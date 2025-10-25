@@ -1,8 +1,8 @@
 #include <cstdio>
 #include "threadpool.h"
 
-static void *work(void *arg) {
-    ThreadPool *tp = (ThreadPool*)arg;
+static void* work(void* arg) {
+    ThreadPool* tp = (ThreadPool*)arg;
 
     while (true) {
         // Wait for something
@@ -44,7 +44,7 @@ void threadpool_init(ThreadPool* tp, uint32_t thread_cnt) {
 
 void threadpool_produce(ThreadPool* tp, void (*f)(void*), void* arg) {
     pthread_mutex_lock(&tp->mutex);
-    tp->queue.push(ThreadPoolWork {f, arg});
+    tp->queue.push(ThreadPoolWork{f, arg});
     pthread_cond_signal(&tp->cond);
     pthread_mutex_unlock(&tp->mutex);
 }

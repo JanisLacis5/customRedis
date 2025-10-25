@@ -24,7 +24,7 @@ static void clear_cmd() {
     printf("\e[1;1H\e[2J");
 }
 
-static int read_all(int fd, uint8_t *buf, size_t n) {
+static int read_all(int fd, uint8_t* buf, size_t n) {
     while (n > 0) {
         ssize_t rec_len = read(fd, buf, n);
         if (rec_len <= 0) {
@@ -36,7 +36,7 @@ static int read_all(int fd, uint8_t *buf, size_t n) {
     return 0;
 }
 
-static int write_all(int fd, uint8_t *buf, size_t n) {
+static int write_all(int fd, uint8_t* buf, size_t n) {
     while (n > 0) {
         ssize_t sent_len = write(fd, buf, n);
         if (sent_len <= 0) {
@@ -48,7 +48,7 @@ static int write_all(int fd, uint8_t *buf, size_t n) {
     return 0;
 }
 
-static void print_res(std::vector<uint8_t> &buf, size_t curr, const uint32_t total_len) {
+static void print_res(std::vector<uint8_t>& buf, size_t curr, const uint32_t total_len) {
     if (curr >= 4 + total_len) {
         return;
     }
@@ -72,7 +72,7 @@ static void print_res(std::vector<uint8_t> &buf, size_t curr, const uint32_t tot
         curr += 4;
 
         // Print the string
-        dstr *str = dstr_init(str_size);
+        dstr* str = dstr_init(str_size);
         memcpy(str->buf, &buf[curr], str_size);
         curr += str_size;
 
@@ -133,12 +133,12 @@ static int handle_read(int fd) {
     return 0;
 }
 
-static int handle_write(int fd, std::vector<dstr*> &query) {
+static int handle_write(int fd, std::vector<dstr*>& query) {
     std::vector<uint8_t> buf;
 
     // Calculate the total write buffer size
-    uint32_t total_size = 5;  // initial tag + query.size()
-    for (const dstr *token: query) {
+    uint32_t total_size = 5; // initial tag + query.size()
+    for (const dstr* token : query) {
         total_size += 5 + token->size; // tag(1) + size(4) + token_len(n)
     }
 
@@ -155,7 +155,7 @@ static int handle_write(int fd, std::vector<dstr*> &query) {
     buf_append_u32(buf, (uint32_t)query.size());
 
     // Add each argument
-    for (const dstr *token: query) {
+    for (const dstr* token : query) {
         uint32_t len = token->size;
         // Add tag and len for the current token
         buf_append_u8(buf, TAG_STR);
@@ -176,21 +176,22 @@ static int handle_loop(int fd) {
         // Remove the last '\n' char
         size_t len = strlen(rawcmd);
         if (len > 0) {
-            rawcmd[len-1] = '\0';
+            rawcmd[len - 1] = '\0';
         }
 
-        char *tmp = strtok(rawcmd, " ");
+        char* tmp = strtok(rawcmd, " ");
         while (tmp) {
             size_t len = strlen(tmp);
-            dstr *str = dstr_init(len);
+            dstr* str = dstr_init(len);
             dstr_append(&str, tmp, len);
             cmd.push_back(str);
             tmp = strtok(NULL, " ");
         }
-        
+
         if (cmd.size() == 1) {
-            char *p = cmd[0]->buf;
-            for ( ; *p; p++) *p = tolower(*p);
+            char* p = cmd[0]->buf;
+            for (; *p; p++)
+                *p = tolower(*p);
 
             if (!strcmp(cmd[0]->buf, "quit")) {
                 return 1;
@@ -216,7 +217,7 @@ static int handle_loop(int fd) {
     return 0;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     // Create the socket
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
@@ -228,7 +229,7 @@ int main(int argc, char **argv) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(8000);
     addr.sin_addr.s_addr = htonl(0);
-    int conn = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+    int conn = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
     if (conn == -1) {
         printf("[client]: Connection failed\n");
         return 1;

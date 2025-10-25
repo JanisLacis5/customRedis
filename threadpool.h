@@ -6,8 +6,8 @@
 #include <pthread.h>
 
 struct ThreadPoolWork {
-    void (*f)(void *arg) = NULL;
-    void *arg = NULL;
+    void (*f)(void* arg) = NULL;
+    void* arg = NULL;
 };
 
 struct ThreadPool {
@@ -17,7 +17,7 @@ struct ThreadPool {
     pthread_cond_t cond;
 };
 
-void threadpool_init(ThreadPool *tp, uint32_t thread_cnt);
-void threadpool_produce(ThreadPool *tp, void (*f)(void*), void *arg);
+void threadpool_init(ThreadPool* tp, uint32_t thread_cnt);
+void threadpool_produce(ThreadPool* tp, void (*f)(void*), void* arg);
 
 #endif

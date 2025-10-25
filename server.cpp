@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-
 #include "server.h"
 #include "data_structures/dlist.h"
 #include "buffer_funcs.h"
@@ -28,7 +27,7 @@ const uint64_t IDLE_TIMEOUT_MS = 100 * 1000;
 const uint64_t READ_TIMEOUT_MS = 10 * 000;
 const uint64_t WRITE_TIMEOUT_MS = 5 * 1000;
 
-static void error(int fd, const char *mes) {
+static void error(int fd, const char* mes) {
     close(fd);
     printf("[server]: %s\n", mes);
 }
@@ -47,7 +46,7 @@ uint64_t get_curr_ms() {
     return tv.tv_sec * 1000 + tv.tv_nsec / 1000 / 1000;
 }
 
-static void close_conn(Conn *conn) {
+static void close_conn(Conn* conn) {
     close(conn->fd);
     global_data.fd_to_conn[conn->fd] = NULL;
     dlist_deatach(&conn->idle_timeout);
@@ -61,8 +60,8 @@ static void process_timers() {
 
     // Idle timeout
     while (!dlist_empty(&global_data.idle_list)) {
-        DListNode *curr = global_data.idle_list.next;
-        Conn *conn = container_of(curr, Conn, idle_timeout);
+        DListNode* curr = global_data.idle_list.next;
+        Conn* conn = container_of(curr, Conn, idle_timeout);
         uint64_t timeout_ms = conn->last_active_ms + IDLE_TIMEOUT_MS;
         if (timeout_ms >= curr_ms) {
             break;
@@ -74,8 +73,8 @@ static void process_timers() {
 
     // Read timeout
     while (!dlist_empty(&global_data.read_list)) {
-        DListNode *curr = global_data.read_list.next;
-        Conn *conn = container_of(curr, Conn, read_timeout);
+        DListNode* curr = global_data.read_list.next;
+        Conn* conn = container_of(curr, Conn, read_timeout);
         uint64_t timeout_ms = conn->last_read_ms + READ_TIMEOUT_MS;
         if (timeout_ms >= curr_ms) {
             break;
@@ -87,8 +86,8 @@ static void process_timers() {
 
     // Write timeout
     while (!dlist_empty(&global_data.write_list)) {
-        DListNode *curr = global_data.write_list.next;
-        Conn *conn = container_of(curr, Conn, write_timeout);
+        DListNode* curr = global_data.write_list.next;
+        Conn* conn = container_of(curr, Conn, write_timeout);
         uint64_t timeout_ms = conn->last_write_ms + WRITE_TIMEOUT_MS;
         if (timeout_ms >= curr_ms) {
             break;
@@ -101,7 +100,7 @@ static void process_timers() {
     // Entry timeouts
     size_t curr_iterations = 0;
     while (!global_data.ttl_heap.empty() && global_data.ttl_heap[0].val < curr_ms) {
-        HNode *hnode = container_of(global_data.ttl_heap[0].pos_ref, HNode, heap_idx);
+        HNode* hnode = container_of(global_data.ttl_heap[0].pos_ref, HNode, heap_idx);
         rem_ttl(hnode);
         uint8_t deleted = hm_delete(&global_data.db, hnode, true);
 
@@ -111,7 +110,7 @@ static void process_timers() {
     }
 }
 
-void set_ttl(HNode *node, uint64_t ttl) {
+void set_ttl(HNode* node, uint64_t ttl) {
     HeapNode hn;
     hn.val = get_curr_ms() + ttl;
     hn.pos_ref = &node->heap_idx;
@@ -120,7 +119,7 @@ void set_ttl(HNode *node, uint64_t ttl) {
     heap_fix(global_data.ttl_heap, global_data.ttl_heap.size() - 1);
 }
 
-void rem_ttl(HNode *node) {
+void rem_ttl(HNode* node) {
     if (node->heap_idx < 0 || node->heap_idx >= global_data.ttl_heap.size()) {
         return;
     }
@@ -141,7 +140,7 @@ static uint64_t next_timer_ms() {
     uint64_t curr = get_curr_ms();
 
     // Get the smallest timer from the sockets
-    Conn *conn = container_of(global_data.idle_list.next, Conn, idle_timeout);
+    Conn* conn = container_of(global_data.idle_list.next, Conn, idle_timeout);
     uint64_t conn_timeout = conn->last_active_ms + IDLE_TIMEOUT_MS;
 
     // Check if there is a smaller entry timeout
@@ -153,7 +152,7 @@ static uint64_t next_timer_ms() {
     return dmax((uint64_t)0, poll_timout);
 }
 
-static size_t parse_cmd(uint8_t *buf, std::vector<dstr*> &cmd) {
+static size_t parse_cmd(uint8_t* buf, std::vector<dstr*>& cmd) {
     // Read the first tag (arr) and len
     uint8_t first_tag = 0;
     uint32_t nstr = 0;
@@ -171,7 +170,7 @@ static size_t parse_cmd(uint8_t *buf, std::vector<dstr*> &cmd) {
         buf += 4;
 
         // Read the token
-        dstr *token = dstr_init(t_len);
+        dstr* token = dstr_init(t_len);
         dstr_append(&token, (char*)buf, t_len);
         buf += t_len;
         cmd.push_back(token);
@@ -180,135 +179,102 @@ static size_t parse_cmd(uint8_t *buf, std::vector<dstr*> &cmd) {
     return nstr;
 }
 
-static void out_buffer(Conn *conn, std::vector<dstr*> &cmd) {
+static void out_buffer(Conn* conn, std::vector<dstr*>& cmd) {
     // Convert the command to lower case
-    char *p = cmd[0]->buf;
-    for ( ; *p; p++) *p = tolower(*p);
+    char* p = cmd[0]->buf;
+    for (; *p; p++)
+        *p = tolower(*p);
 
     // GLOBAL DATABASE
-    if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "get")) {
+    if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "get"))
         do_get(conn, cmd);
-    }
-    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "set")) {
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "set"))
         do_set(conn, cmd);
-    }
-    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "del")) {
+    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "del"))
         do_del(conn, cmd);
-    }
-    else if (cmd.size() == 1 && !strcmp(cmd[0]->buf, "keys")) {
+    else if (cmd.size() == 1 && !strcmp(cmd[0]->buf, "keys"))
         do_keys(conn);
-    }
 
     // HASHMAP
-    else if (cmd.size() >= 4 && (cmd.size() & 1) == 0 && !strcmp(cmd[0]->buf, "hset")) {
+    else if (cmd.size() >= 4 && (cmd.size() & 1) == 0 && !strcmp(cmd[0]->buf, "hset"))
         do_hset(conn, cmd);
-    }
-    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "hget")) {
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "hget"))
         do_hget(conn, cmd);
-    }
-    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "hgetall")) {
+    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "hgetall"))
         do_hgetall(conn, cmd);
-    }
-    else if (cmd.size() >= 3 && !strcmp(cmd[0]->buf, "hdel")) {
+    else if (cmd.size() >= 3 && !strcmp(cmd[0]->buf, "hdel"))
         do_hdel(conn, cmd);
-    }
 
     // TIME TO LIVE
-    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "expire")) {
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "expire"))
         do_expire(conn, cmd);
-    }
-    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "ttl")) {
+    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "ttl"))
         do_ttl(conn, cmd, global_data.ttl_heap, get_curr_ms());
-    }
-    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "persist")) {
+    else if (cmd.size() == 2 && !strcmp(cmd[0]->buf, "persist"))
         do_persist(conn, cmd);
-    }
 
     // SORTED SET
-    else if (cmd.size() == 4 && !strcmp(cmd[0]->buf, "zadd")) {
+    else if (cmd.size() == 4 && !strcmp(cmd[0]->buf, "zadd"))
         do_zadd(conn, cmd);
-    }
-    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zscore")) {
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zscore"))
         do_zscore(conn, cmd);
-    }
-    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zrem")) {
+    else if (cmd.size() == 3 && !strcmp(cmd[0]->buf, "zrem"))
         do_zrem(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "zquery")) {
+    else if (!strcmp(cmd[0]->buf, "zquery"))
         do_zrangequery(conn, cmd);
-    }
 
     // LINKED LIST
-    else if (!strcmp(cmd[0]->buf, "lpush") && cmd.size() == 3) {
+    else if (!strcmp(cmd[0]->buf, "lpush") && cmd.size() == 3)
         do_push(conn, cmd, LLIST_SIDE_LEFT);
-    }
-    else if (!strcmp(cmd[0]->buf, "rpush") && cmd.size() == 3) {
+    else if (!strcmp(cmd[0]->buf, "rpush") && cmd.size() == 3)
         do_push(conn, cmd, LLIST_SIDE_RIGHT);
-    }
-    else if (!strcmp(cmd[0]->buf, "lpop") && cmd.size() >= 2) {
+    else if (!strcmp(cmd[0]->buf, "lpop") && cmd.size() >= 2)
         do_pop(conn, cmd, LLIST_SIDE_LEFT);
-    }
-    else if (!strcmp(cmd[0]->buf, "rpop") && cmd.size() >= 2) {
+    else if (!strcmp(cmd[0]->buf, "rpop") && cmd.size() >= 2)
         do_pop(conn, cmd, LLIST_SIDE_RIGHT);
-    }
-    else if (!strcmp(cmd[0]->buf, "lrange") && cmd.size() == 4) {
+    else if (!strcmp(cmd[0]->buf, "lrange") && cmd.size() == 4)
         do_lrange(conn, cmd);
-    }
 
     // HASHSET
-    else if (!strcmp(cmd[0]->buf, "sadd")) {
+    else if (!strcmp(cmd[0]->buf, "sadd"))
         do_sadd(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "srem")) {
+    else if (!strcmp(cmd[0]->buf, "srem"))
         do_srem(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "smembers")) {
+    else if (!strcmp(cmd[0]->buf, "smembers"))
         do_smembers(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "scard")) {
+    else if (!strcmp(cmd[0]->buf, "scard"))
         do_scard(conn, cmd);
-    }
 
     // BITMAP
-    else if (!strcmp(cmd[0]->buf, "setbit")) {
+    else if (!strcmp(cmd[0]->buf, "setbit"))
         do_setbit(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "getbit")) {
+    else if (!strcmp(cmd[0]->buf, "getbit"))
         do_getbit(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "bitcount")) {
+    else if (!strcmp(cmd[0]->buf, "bitcount"))
         do_bitcount(conn, cmd);
-    }
 
     // HYPERLOGLOG
-    else if (!strcmp(cmd[0]->buf, "pfadd")) {
+    else if (!strcmp(cmd[0]->buf, "pfadd"))
         do_pfadd(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "pfcount")) {
+    else if (!strcmp(cmd[0]->buf, "pfcount"))
         do_pfcount(conn, cmd);
-    }
-    else if (!strcmp(cmd[0]->buf, "pfmerge")) {
+    else if (!strcmp(cmd[0]->buf, "pfmerge"))
         do_pfmerge(conn, cmd);
-    }
+
     // TODO: IMPLEMENT
-    else if (!strcmp(cmd[0]->buf, "multi")) {
+    else if (!strcmp(cmd[0]->buf, "multi"))
         return;
-    }
-    else if (!strcmp(cmd[0]->buf, "exec")) {
-        return;        
-    }
-    else if (!strcmp(cmd[0]->buf, "watch")) {
-        return;        
-    }
-    else if (!strcmp(cmd[0]->buf, "discard")) {
+    else if (!strcmp(cmd[0]->buf, "exec"))
         return;
-    }
-    else {
+    else if (!strcmp(cmd[0]->buf, "watch"))
+        return;
+    else if (!strcmp(cmd[0]->buf, "discard"))
+        return;
+    else
         out_err(conn, "unknown command");
-    }
 }
 
-static void before_res_build(std::vector<uint8_t> &out, uint32_t &header) {
+static void before_res_build(std::vector<uint8_t>& out, uint32_t& header) {
     // Reserve size for the total message len
     header = out.size();
     buf_append_u32(out, 0);
@@ -320,7 +286,7 @@ static void before_res_build(std::vector<uint8_t> &out, uint32_t &header) {
     buf_append_u32(out, RES_OK);
 }
 
-static void after_res_build(std::vector<uint8_t> &out, uint32_t &header) {
+static void after_res_build(std::vector<uint8_t>& out, uint32_t& header) {
     // Add the header
     size_t mes_len = out.size() - header - 4;
     if (mes_len > MAX_MESSAGE_LEN) {
@@ -330,7 +296,7 @@ static void after_res_build(std::vector<uint8_t> &out, uint32_t &header) {
     memcpy(&out[header], &mes_len, 4);
 }
 
-static bool try_one_req(Conn *conn) {
+static bool try_one_req(Conn* conn) {
     if (conn->incoming.size() < 4) {
         // we need to read - we do not even know the message size
         return false;
@@ -351,7 +317,7 @@ static bool try_one_req(Conn *conn) {
 
     // Log the query
     printf("[server]: Token from the client: ");
-    for (dstr *token: cmd) {
+    for (dstr* token : cmd) {
         printf("%s ", token->buf);
     }
     printf("\n");
@@ -373,16 +339,16 @@ static bool try_one_req(Conn *conn) {
 static Conn* handle_accept(int fd) {
     struct sockaddr_in client_addr = {};
     socklen_t addrlen = sizeof(client_addr);
-    int connfd = accept(fd, (struct sockaddr *)&client_addr, &addrlen);
+    int connfd = accept(fd, (struct sockaddr*)&client_addr, &addrlen);
     if (connfd < 0) {
         return NULL;
     }
-    
+
     // Make the conn non-blocking + add it to the alive conn's array
     fd_set_non_blocking(connfd);
-    
+
     // Create the Conn object
-    Conn *conn = new Conn();
+    Conn* conn = new Conn();
     conn->fd = connfd;
     conn->want_read = true;
     conn->last_active_ms = get_curr_ms();
@@ -393,8 +359,8 @@ static Conn* handle_accept(int fd) {
     return conn;
 }
 
-static void handle_read(Conn *conn) {
-    uint8_t rbuf[64*1024];
+static void handle_read(Conn* conn) {
+    uint8_t rbuf[64 * 1024];
     int rv = read(conn->fd, rbuf, sizeof(rbuf));
     if (rv < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
         return;
@@ -406,7 +372,7 @@ static void handle_read(Conn *conn) {
     }
 
     buf_append(conn->incoming, rbuf, (size_t)rv);
-    while(try_one_req(conn)) {}
+    while (try_one_req(conn)) {}
     conn->last_read_ms = get_curr_ms();
 
     if (conn->outgoing.size() > 0) {
@@ -418,7 +384,7 @@ static void handle_read(Conn *conn) {
     }
 }
 
-static void handle_write(Conn *conn) {
+static void handle_write(Conn* conn) {
     int rv = write(conn->fd, conn->outgoing.data(), conn->outgoing.size());
     if (rv < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
         return;
@@ -481,7 +447,7 @@ int main() {
         struct pollfd pfd = {fd, POLLIN, 0};
         poll_args.push_back(pfd);
 
-        for (Conn* conn: global_data.fd_to_conn) {
+        for (Conn* conn : global_data.fd_to_conn) {
             if (!conn) {
                 continue;
             }
@@ -512,14 +478,14 @@ int main() {
 
         // Handle the listening socket
         if (poll_args[0].revents) {
-            Conn *conn = handle_accept(fd);
+            Conn* conn = handle_accept(fd);
             if (!conn) {
                 continue;
             }
 
             // Add this connection to the map
             if (global_data.fd_to_conn.size() <= (size_t)conn->fd) {
-                global_data.fd_to_conn.resize(conn->fd+1);
+                global_data.fd_to_conn.resize(conn->fd + 1);
             }
             global_data.fd_to_conn[conn->fd] = conn;
         }
@@ -531,7 +497,7 @@ int main() {
                 continue;
             }
 
-            Conn *conn = global_data.fd_to_conn[poll_args[i].fd];
+            Conn* conn = global_data.fd_to_conn[poll_args[i].fd];
             conn->last_active_ms = get_curr_ms();
             dlist_deatach(&conn->idle_timeout);
             dlist_insert_before(&global_data.idle_list, &conn->idle_timeout);
@@ -545,7 +511,6 @@ int main() {
             if ((ready & POLLERR) && conn->want_close) {
                 close_conn(conn);
             }
-
         }
         process_timers();
     }
