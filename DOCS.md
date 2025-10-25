@@ -1,6 +1,8 @@
-# customRedis
+# Redis clone documentation
 
-A lightweight Redis-compatible in-memory data store written in C++. Supports basic string and sorted-set commands, key expiration, and a poll-based event loop with connection timeouts. Designed as a learning project in low-level networking, custom data structures, and concurrency.
+A lightweight Redis clone written in C. Supports the main commands for the key data structures, key
+expiration, and a poll-based event loop with connection timeouts. Designed as a learning project in low-level
+networking, custom data structures, concurrency and low level development overall.
 
 ---
 
@@ -13,12 +15,10 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 5. [Architecture Overview](#architecture-overview)
     - [Event Loop & Concurrency](#event-loop--concurrency)
     - [Connection Lifecycle](#connection-lifecycle)
-7. [Command Reference](#command-reference)
+6. [Command Reference](#command-reference)
     - [String Commands](#string-commands)
     - [Sorted-Set Commands](#sorted-set-commands)
     - [Expiration Commands](#expiration-commands)
-9. [Limitations](#limitations)
-10. [Future Work](#future-work)
 
 ---
 
@@ -29,22 +29,22 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 - **Sorted sets**: `ZADD`, `ZSCORE`, `ZREM`, `ZQUERY` (range query by score)
 - **Key expiration**: `EXPIRE`, `TTL`, `PERSIST`
 - **Non-blocking I/O** using `poll()` and configurable timeouts
-- **Custom data structures**: hash map, min-heap for TTL, zset (AVL + heap), doubly linked list for timeouts
+- **Custom data structures**: hash map, min-heap for TTL, zset (AVL + heap), doubly linked list for timeouts, hyperloglog
 - **Thread pool** for offloading expensive operations
-- **Modular CMake build** for portability
 
 ---
 
 # Directory Structure
+
 ```text
 ├── customRedis
-│   ├── data_structures
+│   ├── data_structures  // Directory that holds everything about data strucutres
 │   │   ├── avl_tree.cpp/.h
 │   │   ├── dlist.cpp/.h
 │   │   ├── hashmap.cpp/.h
 │   │   ├── heap.cpp/.h
 │   │   ├── zset.cpp/.h
-│   ├── tests
+│   ├── tests  // Tests to be impelemented
 │   │   ├── run_all_tests.sh
 │   │   ├── test_avl.cpp
 │   │   ├── test_avl_deletion.cpp
@@ -56,6 +56,9 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 │   │   ├── test_hqueries.py
 │   │   ├── test_performance.py
 │   │   └── test_zset.cpp
+│   ├── tmp  // Mostly notes and ChatGPT generated files
+│   │   ├── test_roadmap.md
+│   │   └── tmp_todo.md
 │   ├── utils
 │   │   └── common.h
 │   ├── buffer_funcs.cpp/.h
@@ -66,8 +69,9 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 │   ├── tblock.cpp/.h
 │   ├── server.cpp/.h
 │   ├── threadpool.cpp/.h
+│   ├── README.md
 │   ├── DOCS.md
-│   └── todo.md
+│   └── todo.md 
 ```
 
 ---
@@ -75,7 +79,7 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 # Build & Installation
 
 1. **Prerequisites**
-    - C++17 compiler (g++ / clang++)
+    - C++17 compiler (g++ / clang++, gcc)
     - CMake 3.10+
 
 2. **Clone & Build**
@@ -97,18 +101,11 @@ A lightweight Redis-compatible in-memory data store written in C++. Supports bas
 2. **Compile client**
     ```bash
     g++ -Wall -Wextra client.cpp buffer_funcs.cpp utils/common.h data_structures/dstr.cpp -Iutils -o client  
-       ```
+   ```
 
-3. **Run commands** \
-   Example:
+3. **Run the CLI** 
    ```bash
-   $ ./client
-
-   $ set root 1
-   > (null)
-
-   $ get root
-   > (str) 1
+    ./client
    ```
 
 # Architecture Overview
@@ -145,11 +142,14 @@ struct Conn {
 ```
 
 # Timeout Queues
+
 Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connection deadlines.  
 `process_timers()` advances time and closes idle or stalled connections.
 
 # Command Reference
+
 ## String commands
+
 | Command | Syntax              | Description             |
 |---------|---------------------|-------------------------|
 | SET     | `SET <key> <value>` | Store a string value    |
@@ -158,6 +158,7 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | KEYS    | `KEYS`              | List all keys           |
 
 ## HSet commands
+
 | Command | Syntax                                 | Description                                                                                                         |
 |---------|----------------------------------------|---------------------------------------------------------------------------------------------------------------------|
 | HSET    | `HSET key field value [field value …]` | Set one or more `field`→`value` pairs in the hash stored at `key`. Returns the number of new fields added.          |
@@ -166,6 +167,7 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | HGETALL | `HGETALL key`                          | Retrieve all fields and values in the hash at `key`. Returns a list: `field1, value1, field2, value2, …`.           |
 
 ## Sorted Set commands
+
 | Command | Syntax                                                   | Description                         |
 |---------|----------------------------------------------------------|-------------------------------------|
 | ZADD    | `ZADD <key> <score> <member>`                            | Add or update a member with a score |
@@ -174,6 +176,7 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | ZQUERY  | `ZQUERY <key> BY <min\max> <score> OFFSET <n> LIMIT <m>` | Query a score range with pagination |
 
 ## Expiration commands
+
 | Command | Syntax                   | Description                               |
 |---------|--------------------------|-------------------------------------------|
 | EXPIRE  | `EXPIRE <key> <seconds>` | Set a key’s expiration in seconds         |
@@ -181,6 +184,7 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | PERSIST | `PERSIST <key>`          | Remove expiration to make a key permanent |
 
 ## Linked List commands
+
 | Command | Syntax                       | Description                                                                               |
 |---------|------------------------------|-------------------------------------------------------------------------------------------|
 | LPUSH   | `LPUSH <key> <value>`        | Add a new value to the linked list's left side (beginning)                                |
@@ -190,6 +194,7 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | LRANGE  | `LRANGE <key> <start> <end>` | Return values in range [start, end] on a 0-indexed list. Both start and end are included. |
 
 ## Hashset commands
+
 | Command  | Syntax               | Description                      |
 |----------|----------------------|----------------------------------|
 | SADD     | `SADD <key> <value>` | Adds value to a hashset          |
@@ -198,23 +203,9 @@ Three doubly linked lists (`idle_list`, `read_list`, `write_list`) track connect
 | SCARD    | `SCARD <key>`        | Retuns hashset's elment count    |
 
 ## Bitmap commands
+
 | Command  | Syntax                                       | Description                                                                                                                                                                                                              |
 |----------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | SETBIT   | `SETBIT <key> <bit_pos> <bit_value>`         | Sets bit on a bitmap stored at key `key` at position `bit_pos` to `bit_value` (it can be 0 or 1)                                                                                                                         |
 | GETREM   | `SREM <key> <bit_pos>`                       | Retrieves bit from bitmap stored at key `key` at position `bit_pos`                                                                                                                                                      |
 | BITCOUNT | `BITCOUNT <key> [<start> <end> BIT \| BYTE]` | Returns count of set bits on a bitmap stored at key `key`. `start` defaults to 0, `end` defaults to the end of bitmap and for BIT \| BYTE option, BIT is the default. BIT option counts positions as bits, BYTE as bytes |                                                                        |
-
-# Limitations
-- No on-disk persistence (RDB/AOF) yet
-- Single-threaded event loop; thread pool only for off-loading
-- Partial RESP support (RESP3 not implemented)
-- No replication, clustering, or ACLs
-- Only strings and sorted-sets; other data types not yet supported
-
-# Future work
-- Add RDB snapshot and AOF persistence
-- Implement Hash, List, Set, Bitmap, HyperLogLog
-- Support transactions (`MULTI` / `EXEC`), Lua scripting, Pub/Sub
-- Introduce master–replica replication and automatic failover
-- Enhance RESP3 compliance and binary framing
-- Add `INFO`, `CLIENT` commands, and a benchmarking suite

@@ -1,4 +1,5 @@
 ## TODO List
+Note: This file is written by ChatGPT, editted by me afterward.
 
 1. **More Core Data-Type Commands (Low Effort)**
 
@@ -12,7 +13,7 @@ Adding the other “built-in” Redis types will instantly beef up your feature 
 | Bitmaps     | SETBIT / GETBIT / BITCOUNT           | Medium       | YES   |
 | HyperLogLog | PFADD / PFCOUNT                      | Medium       | YES   |
 
-**Why?** These are the staple Redis types. Even basic implementations (e.g. a `std::unordered_map<string,string>` for hashes, a `deque<string>` for lists, a `bitset` or `vector<bool>` for bitmaps) demonstrate mastery of C++ data structures and will make your clone feel *complete*.
+**Why?** These are the staple Redis types.
 
 ---
 
@@ -28,7 +29,7 @@ Once you have multiple types, you can add:
     - `EVAL` / `EVALSHA`
     - Embed Lua (e.g. via Lua C API).
 
-**Why?** Transactions demonstrate command-buffering and atomicity; scripting shows you can integrate an interpreter, a huge résumé tick.
+**Why?** Transactions demonstrate command-buffering and atomicity; scripting shows that I can integrate an interpreter.
 
 ---
 
@@ -42,7 +43,7 @@ Once you have multiple types, you can add:
     - `XADD` / `XREAD` / `XLEN` / `XRANGE`
     - Under the hood: a log-structured sequence of entries, indexed by ID.
 
-**Why?** Messaging patterns are fundamental in distributed systems; they push your networking and memory-management skills.
+**Why?** Messaging patterns are fundamental in distributed systems; learn networking and memory-management skills.
 
 ---
 
@@ -51,7 +52,7 @@ Once you have multiple types, you can add:
 So far everything lives in RAM. To keep data across restarts:
 
 - **RDB-style snapshots**
-    - Periodically write your entire in-memory state to disk and load it at startup.
+    - Periodically write the entire in-memory state to disk and load it at startup.
 
 - **AOF (Append-Only File)**
     - Log every write command to a file. On restart, replay the log. Support “rewrite”/compaction to prevent unbounded growth.
@@ -75,25 +76,3 @@ Once you have persistence, you can replicate it:
     - Divide your keyspace into slots and route commands across nodes.
 
 **Why?** Demonstrates distributed systems knowledge and fault tolerance.
-
----
-
-6. **Protocol & Tooling Polish (Ongoing)**
-
-Even as you build features, polish the user experience:
-
-- **Full RESP2/RESP3 protocol**
-    - Proper binary framing, pipelining, intuitive error handling.
-
-- **INFO command**
-    - Expose uptime, memory usage, command statistics.
-
-- **CLIENT commands**
-    - `CLIENT LIST` / `CLIENT KILL` for connection management.
-
-- **Benchmarks & Tests**
-    - Automated unit- and integration-tests for every command.
-    - A simple benchmarking harness (compare ops/sec vs. Redis under tiny workloads).
-
-- **Docs, Docker & CI**
-    - A rock-solid README with examples, a Dockerfile, and a GitHub Actions pipeline.
