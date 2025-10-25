@@ -53,20 +53,20 @@ Performance testing and profiling results will be published here once performanc
 
 1. Compile and run the backend:
 
-  ```bash
-  mkdir build 
-  cd build
-  cmake ..
-  cmake --build .
-  ./redis_server
-   ```
+```bash
+mkdir build 
+cd build
+cmake ..
+cmake --build .
+./redis_server
+ ```
 
 2. Compile and run the client:
 
-  ```bash
-      g++ -Wall -Wextra client.cpp buffer_funcs.cpp utils/common.h data_structures/dstr.cpp -Iutils -o client  
-      ./client
-  ```
+```bash
+g++ -Wall -Wextra client.cpp buffer_funcs.cpp utils/common.h data_structures/dstr.cpp -Iutils -o client  
+./client
+```
 
 Now you are in the CLI and you can run commands (see [Example Video](#example-video)) for an example.
 
