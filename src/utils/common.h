@@ -2,7 +2,7 @@
 #define COMMON_H
 
 #include <stdint.h>
-#include <cstddef>
+#include <stddef.h>
 
 // ptr = pointer to a struct's member
 // T = type of the enclosing struct
