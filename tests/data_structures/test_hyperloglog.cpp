@@ -5,7 +5,7 @@
 static uint8_t make_val_flag(uint8_t val /*1..32*/, uint8_t cnt /*1..4*/) {
     assert(val >= 1 && val <= 32);
     assert(cnt >= 1 && cnt <= 4);
-    return (uint8_t)((1u<<7) | ((uint8_t)(val - 1) << 2) | (uint8_t)(cnt - 1));
+    return (uint8_t)((1u << 7) | ((uint8_t)(val - 1) << 2) | (uint8_t)(cnt - 1));
 }
 
 static uint8_t make_zero_flag(uint32_t cnt /*1..64*/) {
@@ -13,29 +13,29 @@ static uint8_t make_zero_flag(uint32_t cnt /*1..64*/) {
     return (uint8_t)(cnt - 1);
 }
 
-static void write_xzero_bytes(uint8_t *msb, uint8_t *lsb, uint32_t cnt /*1..16384*/) {
+static void write_xzero_bytes(uint8_t* msb, uint8_t* lsb, uint32_t cnt /*1..16384*/) {
     assert(cnt >= 1 && cnt <= 16384);
     uint32_t raw = cnt - 1;
-    uint8_t hi6  = (raw >> 8) & 63;
+    uint8_t hi6 = (raw >> 8) & 63;
     *msb = ((1u << 6) | hi6);
     *lsb = (raw & 255);
 }
 
 // === GENERAL HELPER FUNCTION TESTS
 void test_get_enc() {
-    dstr *hll = NULL;
+    dstr* hll = NULL;
     hll_init(&hll);
 
     assert(get_enc(hll) == HLL_SPARSE);
 
     hll->buf[4] = HLL_DENSE;
     assert(get_enc(hll) == HLL_DENSE);
-    
+
     free(hll);
 }
 
 void test_set_enc() {
-    dstr *hll = NULL;
+    dstr* hll = NULL;
     hll_init(&hll);
 
     set_enc(hll, HLL_DENSE);
@@ -48,7 +48,7 @@ void test_set_enc() {
 }
 
 void test_cache_valid_and_invalidate() {
-    dstr *hll = NULL;
+    dstr* hll = NULL;
     hll_init(&hll);
 
     // Manually validate cache (clear bit7 at byte 15)
@@ -125,20 +125,17 @@ void test_xzero_cnt() {
 }
 
 void test_set_cache_and_get_cache() {
-    dstr *hll = NULL;
+    dstr* hll = NULL;
     hll_init(&hll);
 
     // After set_cache, cache must be valid and round-trip should succeed.
     uint64_t vals[] = {
-        0ull,
-        1ull,
-        123456789ull,
-        (1ull << 40) + 12345ull,
-        (1ull << 63) - 1ull // max allowed by your assert
+        0ull, 1ull, 123456789ull, (1ull << 40) + 12345ull,
+        (1ull << 63) - 1ull  // max allowed by your assert
     };
     for (size_t i = 0; i < 5; i++) {
         set_cache(hll, vals[i]);
-        assert(cache_valid(hll));           // top bit of byte 15 must be 0
+        assert(cache_valid(hll));  // top bit of byte 15 must be 0
         uint64_t got = get_cache(hll);
         assert(got == vals[i]);
     }
@@ -170,4 +167,3 @@ int run_all_hll() {
     printf("[hll]: ALL HLL TESTS PASSED!\n");
     return 0;
 }
-

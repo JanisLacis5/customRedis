@@ -1,9 +1,9 @@
-#include <cstdlib>
 #include <stdio.h>
+#include <cstdlib>
 #include "../data_structures/avl_tree.cpp"
 #include "../data_structures/avl_tree.h"
 
-static void assert_node(AVLNode *node, AVLNode *parent, AVLNode *left, AVLNode *right, uint32_t height, uint32_t size) {
+static void assert_node(AVLNode* node, AVLNode* parent, AVLNode* left, AVLNode* right, uint32_t height, uint32_t size) {
     assert(node->parent == parent);
     assert(node->left == left);
     assert(node->right == right);
@@ -11,9 +11,11 @@ static void assert_node(AVLNode *node, AVLNode *parent, AVLNode *left, AVLNode *
     assert(node->size == size);
 }
 
+static AVLNode* init_tree() {}
+
 void test_avl_init() {
     // Heap
-    AVLNode *root_h = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* root_h = (AVLNode*)malloc(sizeof(AVLNode));
     avl_init(root_h);
     assert_node(root_h, NULL, NULL, NULL, 1, 1);
     free(root_h);
@@ -24,33 +26,19 @@ void test_avl_init() {
     assert_node(&root_s, NULL, NULL, NULL, 1, 1);
 }
 
-void test_update_node() {
+void test_update_node() {}
 
-}
+void test_rotate_left() {}
 
-void test_rotate_left() {
+void test_rotate_right() {}
 
-}
+void test_del_simple() {}
 
-void test_rotate_right() {
+void test_avl_height() {}
 
-}
+void test_avl_fix() {}
 
-void test_del_simple() {
-
-}
-
-void test_avl_height() {
-
-}
-
-void test_avl_fix() {
-
-}
-
-void test_avl_del() {
-
-}
+void test_avl_del() {}
 
 int run_all_avl() {
     test_avl_init();

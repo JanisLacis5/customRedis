@@ -1,15 +1,15 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
-#include <cstdint>
-#include <cstdlib>
 #include <string.h>
 #include <time.h>
-#include <errno.h>
+#include <cstdint>
+#include <cstdlib>
 #include "../../data_structures/dstr.h"
 
 const size_t too_large_size = MAX_STR_SIZE + 1;
 
-static void assert_str(dstr *str, size_t size, size_t free) {
+static void assert_str(dstr* str, size_t size, size_t free) {
     assert(str->size == size);
     assert(str->free == free);
     assert(str->buf[size] == '\0');
@@ -18,9 +18,9 @@ static void assert_str(dstr *str, size_t size, size_t free) {
 static void test_dstr_init(size_t size) {
     // TOO LARGE
     errno = 0;
-    dstr *str = dstr_init(too_large_size);
+    dstr* str = dstr_init(too_large_size);
     assert(errno == STR_ERR_TOO_LARGE);
-    assert(str == NULL); 
+    assert(str == NULL);
 
     // OK
     str = dstr_init(size);
@@ -29,16 +29,16 @@ static void test_dstr_init(size_t size) {
 }
 
 static void test_dstr_cap(size_t size) {
-    dstr *str = dstr_init(size);
+    dstr* str = dstr_init(size);
     size_t str_cap = dstr_cap(str);
     assert(str_cap == size);
     free(str);
-} 
+}
 
 static void test_dstr_append() {
     // TOO LARGE
-    dstr *str = dstr_init(0);
-    uint32_t err = dstr_append(&str, "", too_large_size); // "" because error is expected
+    dstr* str = dstr_init(0);
+    uint32_t err = dstr_append(&str, "", too_large_size);  // "" because error is expected
     assert(err == STR_ERR_TOO_LARGE);
     assert_str(str, 0, 0);
 
@@ -55,7 +55,7 @@ static void test_dstr_append() {
 
 static void test_dstr_resize_grow(size_t resize_to) {
     // TOO LARGE
-    dstr *str = dstr_init(0);
+    dstr* str = dstr_init(0);
     uint32_t err = dstr_resize(&str, too_large_size, '\0');
     assert(err == STR_ERR_TOO_LARGE);
     assert_str(str, 0, 0);
@@ -72,7 +72,7 @@ static void test_dstr_resize_grow(size_t resize_to) {
 
 static void test_dstr_resize_shrink(size_t resize_to) {
     // TOO LARGE
-    dstr *str = dstr_init(MAX_STR_SIZE);
+    dstr* str = dstr_init(MAX_STR_SIZE);
     uint32_t err = dstr_resize(&str, too_large_size, '\0');
     assert(err == STR_ERR_TOO_LARGE);
     assert_str(str, 0, MAX_STR_SIZE);
@@ -88,7 +88,7 @@ static void test_dstr_resize_shrink(size_t resize_to) {
 }
 
 static void test_dstr_assign(size_t size) {
-    dstr *str = dstr_init(0);
+    dstr* str = dstr_init(0);
 
     // TOO LARGE
     uint32_t err = dstr_assign(&str, "", too_large_size);
@@ -96,7 +96,7 @@ static void test_dstr_assign(size_t size) {
     assert_str(str, 0, 0);
 
     // OK
-    char *tmp = (char*)malloc(size + 1);
+    char* tmp = (char*)malloc(size + 1);
     memset(tmp, 'j', size);
     tmp[size] = '\0';
 
@@ -112,7 +112,7 @@ int run_all_dstr() {
 
     // Test if the string overall works with different sizes
     for (int len = 0; len < 10; len++) {
-        dstr *str = dstr_init(len);
+        dstr* str = dstr_init(len);
         assert(str->size == 0);
         assert(str->free == len);
         assert(str->buf[0] == '\0');
@@ -122,7 +122,7 @@ int run_all_dstr() {
 
     // Each function individually
     size_t size_grid[] = {1, 100, (1 << 15), MAX_STR_SIZE};
-    for (size_t size: size_grid) {
+    for (size_t size : size_grid) {
         test_dstr_init(size);
         printf("[dstr]: dstr_init() passed! (1/6)\n");
         test_dstr_cap(size);
