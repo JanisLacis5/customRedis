@@ -11,7 +11,9 @@ static void assert_node(AVLNode* node, AVLNode* parent, AVLNode* left, AVLNode* 
     assert(node->size == size);
 }
 
-static AVLNode* init_tree() {}
+static AVLNode* init_tree() {
+    AVLNode* root = (AVLNode*)malloc(sizeof(AVLNode));
+}
 
 void test_avl_init() {
     // Heap
@@ -26,7 +28,31 @@ void test_avl_init() {
     assert_node(&root_s, NULL, NULL, NULL, 1, 1);
 }
 
-void test_update_node() {}
+void test_update_node() {
+    AVLNode* root = (AVLNode*)malloc(sizeof(AVLNode)); 
+    AVLNode* left = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* right = (AVLNode*)malloc(sizeof(AVLNode));
+
+    root->left = left;
+    root->right = right;
+    right->parent = root;
+    left->parent = root;
+    assert_node(root, NULL, left, right, 1, 2);
+    assert_node(left, root, NULL, NULL, 0, 1);
+    assert_node(right, root, NULL, NULL, 0, 1);
+    
+    // Swap right and root
+    right->parent = NULL;
+    right->right = root;
+    root->right = NULL;
+    root->parent = right;
+    update_node(root);
+    update_node(right);
+
+    assert_node(root, NULL, left, right, 1, 2);
+    assert_node(left, root, NULL, NULL, 0, 1);
+    assert_node(right, root, NULL, NULL, 0, 1);
+}
 
 void test_rotate_left() {}
 
