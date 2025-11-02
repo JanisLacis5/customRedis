@@ -3,6 +3,7 @@
 #include "utils/common.h"
 
 static void update_node(AVLNode *node) {
+    // Helper function that is called when node has changed its position in the tree
     node->height = 1 + dmax(avl_height(node->left), avl_height(node->right));
     node->size = 1 + avl_size(node->left) + avl_size(node->right);
 }

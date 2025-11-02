@@ -9,7 +9,7 @@ struct AVLNode {
     AVLNode *left = NULL;
     AVLNode *right = NULL;
     uint32_t height = 0;  // height of the tree
-    uint32_t size = 0;  // no. of nodes in the tree
+    uint32_t size = 0;  // number of nodes in the subtree where the current node is the root
 };
 
 inline uint32_t avl_size(AVLNode *node) {
