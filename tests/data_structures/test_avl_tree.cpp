@@ -28,39 +28,70 @@ void test_update_node() {
     AVLNode* root = (AVLNode*)malloc(sizeof(AVLNode)); 
     AVLNode* left = (AVLNode*)malloc(sizeof(AVLNode));
     AVLNode* right = (AVLNode*)malloc(sizeof(AVLNode));
+    avl_init(root);
+    avl_init(left);
+    avl_init(right);
 
     root->left = left;
     root->right = right;
     right->parent = root;
     left->parent = root;
-    assert_node(root, NULL, left, right, 1, 2);
-    assert_node(left, root, NULL, NULL, 0, 1);
-    assert_node(right, root, NULL, NULL, 0, 1);
+    update_node(root);
+    update_node(left);
+    update_node(right);
+
+    assert_node(root, NULL, left, right, 2, 3);
+    assert_node(left, root, NULL, NULL, 1, 1);
+    assert_node(right, root, NULL, NULL, 1, 1);
     
     // Swap right and root
     right->parent = NULL;
     right->right = root;
-    root->right = NULL;
+    right->left = left;
+
     root->parent = right;
+    root->right = NULL;
+    root->left = NULL;
+
+    left->parent = right;
     update_node(root);
     update_node(right);
+    update_node(left);
 
-    assert_node(root, NULL, left, right, 1, 2);
-    assert_node(left, root, NULL, NULL, 0, 1);
-    assert_node(right, root, NULL, NULL, 0, 1);
+    assert_node(right, NULL, left, root, 2, 3);
+    assert_node(left, right, NULL, NULL, 1, 1);
+    assert_node(root, right, NULL, NULL, 1, 1);
+
+    free(root);
+    free(left);
+    free(right);
 }
 
 void test_rotate_left() {
     AVLNode* first = (AVLNode*)malloc(sizeof(AVLNode));
     AVLNode* second = (AVLNode*)malloc(sizeof(AVLNode));
     AVLNode* third = (AVLNode*)malloc(sizeof(AVLNode));
-    first->left = second;
-    second->left = third;
+    avl_init(first);
+    avl_init(second);
+    avl_init(third);
+
+    first->right = second;
+
+    second->parent = first;
+    second->right = third;
+
+    third->parent = second;
+    update_node(first);
+    update_node(second);
     rotate_left(first);
 
     assert_node(first, second, NULL, NULL, 1, 1);
     assert_node(third, second, NULL, NULL, 1, 1);
-    assert_node(second, NULL, first, third, 2, 2);
+    assert_node(second, NULL, first, third, 2, 3);
+    
+    free(first);
+    free(second);
+    free(third);
 }
 
 void test_rotate_right() {}
