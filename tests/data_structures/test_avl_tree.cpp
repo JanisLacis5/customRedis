@@ -94,7 +94,32 @@ void test_rotate_left() {
     free(third);
 }
 
-void test_rotate_right() {}
+void test_rotate_right() {
+    AVLNode* first = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* second = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* third = (AVLNode*)malloc(sizeof(AVLNode));
+    avl_init(first);
+    avl_init(second);
+    avl_init(third);
+
+    first->left = second;
+
+    second->parent = first;
+    second->left = third;
+
+    third->parent = second;
+    update_node(first);
+    update_node(second);
+    rotate_right(first);
+
+    assert_node(first, second, NULL, NULL, 1, 1);
+    assert_node(third, second, NULL, NULL, 1, 1);
+    assert_node(second, NULL, third, first, 2, 3);
+    
+    free(first);
+    free(second);
+    free(third);
+}
 
 void test_del_simple() {}
 
