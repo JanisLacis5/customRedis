@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include "../src/data_structures/avl_tree.cpp"
 #include "../src/data_structures/avl_tree.h"
 
@@ -121,7 +122,36 @@ void test_rotate_right() {
     free(third);
 }
 
-void test_del_simple() {}
+void test_del_simple() {
+    AVLNode* root = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* second = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* third = (AVLNode*)malloc(sizeof(AVLNode));
+    avl_init(root);
+    avl_init(second);
+    avl_init(third);
+    root->right = second;
+    second->parent = root;
+    second->right = third;
+    third->parent = second;
+    update_node(third);
+    update_node(second);
+    update_node(root);
+
+    assert_node(root, NULL, NULL, second, 3, 3);
+    assert_node(second, root, NULL, third, 2, 2);
+    assert_node(third, second, NULL, NULL, 1, 1);
+
+    root = del_simple(second);
+    free(second); // this would be done by avl_del function
+    update_node(root);
+    update_node(third);
+
+    assert_node(root, NULL, NULL, third, 2, 2);
+    assert_node(third, root, NULL, NULL, 1, 1);
+    
+    free(root);
+    free(third);
+}
 
 void test_avl_height() {}
 
