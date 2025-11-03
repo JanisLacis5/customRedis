@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../data_structures/avl_tree.cpp"
-#include "../data_structures/avl_tree.h"
+#include "../src/data_structures/avl_tree.cpp"
+#include "../src/data_structures/avl_tree.h"
 
 static void assert_node(AVLNode* node, AVLNode* parent, AVLNode* left, AVLNode* right, uint32_t height, uint32_t size) {
     assert(node->parent == parent);
@@ -9,10 +9,6 @@ static void assert_node(AVLNode* node, AVLNode* parent, AVLNode* left, AVLNode* 
     assert(node->right == right);
     assert(node->height == height);
     assert(node->size == size);
-}
-
-static AVLNode* init_tree() {
-    AVLNode* root = (AVLNode*)malloc(sizeof(AVLNode));
 }
 
 void test_avl_init() {
@@ -54,7 +50,18 @@ void test_update_node() {
     assert_node(right, root, NULL, NULL, 0, 1);
 }
 
-void test_rotate_left() {}
+void test_rotate_left() {
+    AVLNode* first = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* second = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode* third = (AVLNode*)malloc(sizeof(AVLNode));
+    first->left = second;
+    second->left = third;
+    rotate_left(first);
+
+    assert_node(first, second, NULL, NULL, 1, 1);
+    assert_node(third, second, NULL, NULL, 1, 1);
+    assert_node(second, NULL, first, third, 2, 2);
+}
 
 void test_rotate_right() {}
 

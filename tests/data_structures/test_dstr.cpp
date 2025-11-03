@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <cstdint>
-#include <cstdlib>
-#include "../../data_structures/dstr.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include "../../src/data_structures/dstr.h"
 
 const size_t too_large_size = MAX_STR_SIZE + 1;
 

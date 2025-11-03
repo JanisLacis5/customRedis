@@ -1,7 +1,7 @@
 #ifndef DSTR_H
 #define DSTR_H
 #include <stdint.h>
-#include <cstddef>
+#include <stddef.h>
 
 const size_t MAX_STR_PREALOC = 1024 * 1024; // 1 MB
 const size_t MAX_STR_SIZE = (1ull << 30); // 1 GB

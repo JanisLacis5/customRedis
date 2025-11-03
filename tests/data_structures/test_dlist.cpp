@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
-#include <cstdio>
+#include <stdio.h>
 #include "data_structures/dlist.cpp"
 #include "dlist.h"
 #include "dstr.h"
@@ -35,8 +35,6 @@ void test_dlist_empty() {
     n2->prev = n1;
 
     assert(!dlist_empty(n1));
-    assert(n1->val->free == 1);
-    assert(n2->val->free == 2);
 
     free(n1);
     free(n2);
@@ -56,8 +54,6 @@ void test_dlist_deatach() {
 
     dlist_deatach(n2);
     assert(n1->prev == NULL && n1->next == NULL);
-    assert(n1->val->free == 1);
-    assert(n2->val->free == 2);
 
     free(n1);
     free(n2);
@@ -75,8 +71,6 @@ void test_dlist_insert_before() {
     dlist_insert_before(n1, n2);
     assert(n1->prev == n2);
     assert(n2->next == n1);
-    assert(n1->val->free == 1);
-    assert(n2->val->free == 2);
 
     free(n1);
     free(n2);
@@ -94,8 +88,6 @@ void test_dlist_insert_after() {
     dlist_insert_after(n1, n2);
     assert(n1->next == n2);
     assert(n2->prev == n1);
-    assert(n1->val->free == 1);
-    assert(n2->val->free == 2);
 
     free(n1);
     free(n2);

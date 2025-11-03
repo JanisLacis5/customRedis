@@ -1,6 +1,6 @@
 #include <assert.h>
 #include "avl_tree.h"
-#include "utils/common.h"
+#include "common.h"
 
 static void update_node(AVLNode *node) {
     // Helper function that is called when node has changed its position in the tree
